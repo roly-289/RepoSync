@@ -58,12 +58,14 @@ public class Settings
 
 public partial class MainWindow : Window
 {
+    static readonly string Ver = (System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)) ?? "?";
     readonly ObservableCollection<RepoItem> _repos = new();
     static readonly HttpClient Http = new();
 
     public MainWindow()
     {
         InitializeComponent();
+        Title = $"Repo Sync v{Ver}";
         Grid.ItemsSource = _repos;
         var st = Settings.Load();
         UserBox.Text = st.Profile;
@@ -118,7 +120,7 @@ public partial class MainWindow : Window
                 try { using var d = JsonDocument.Parse(await Http.GetStringAsync("https://api.github.com/user")); who = "token user: " + d.RootElement.GetProperty("login").GetString(); }
                 catch (Exception ex) { who = "TOKEN REJECTED: " + ex.Message; }
             }
-            Title = $"Repo Sync v4 - {_repos.Count} repos ({_repos.Count(r => r.Private)} private), {who}";
+            Title = $"Repo Sync v{Ver} - {_repos.Count} repos ({_repos.Count(r => r.Private)} private), {who}";
             if (_repos.Count == 0)
                 MessageBox.Show(token != ""
                     ? "GitHub returned no repos for this token. For a fine-grained token, set Repository access to 'All repositories' (or select repos) and the right Resource owner."
