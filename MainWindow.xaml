@@ -23,6 +23,7 @@
       <DataGrid.Columns>
         <DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
         <DataGridTextColumn Header="Repo" Binding="{Binding Name}" IsReadOnly="True" Width="250"/>
+        <DataGridCheckBoxColumn Header="Private" Binding="{Binding Private}" IsReadOnly="True"/>
         <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="*"/>
       </DataGrid.Columns>
     </DataGrid>

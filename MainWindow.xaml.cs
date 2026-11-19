@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 
@@ -15,10 +17,43 @@ public class RepoItem : INotifyPropertyChanged
     bool _sel;
     public string Name { get; set; } = "";
     public string CloneUrl { get; set; } = "";
+    public bool Private { get; set; }
     public bool IsSelected { get => _sel; set { _sel = value; Raise(nameof(IsSelected)); } }
     public string Status { get => _status; set { _status = value; Raise(nameof(Status)); } }
     public event PropertyChangedEventHandler? PropertyChanged;
     void Raise(string n) => PropertyChanged?.Invoke(this, new(n));
+}
+
+public class Settings
+{
+    public string Profile { get; set; } = "";
+    public string LocalFolder { get; set; } = "";
+    public string ProtectedToken { get; set; } = ""; // DPAPI-encrypted (current Windows user)
+
+    static readonly string PathFile = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RepoSync", "settings.json");
+
+    public static Settings Load()
+    {
+        try { return JsonSerializer.Deserialize<Settings>(File.ReadAllText(PathFile)) ?? new(); }
+        catch { return new(); }
+    }
+
+    public void Save()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(PathFile)!);
+        File.WriteAllText(PathFile, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    public string Token
+    {
+        get
+        {
+            try { return ProtectedToken == "" ? "" : Encoding.UTF8.GetString(ProtectedData.Unprotect(Convert.FromBase64String(ProtectedToken), null, DataProtectionScope.CurrentUser)); }
+            catch { return ""; }
+        }
+        set => ProtectedToken = value == "" ? "" : Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(value), null, DataProtectionScope.CurrentUser));
+    }
 }
 
 public partial class MainWindow : Window
@@ -30,8 +65,19 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Grid.ItemsSource = _repos;
-        FolderBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "source", "repos");
+        var st = Settings.Load();
+        UserBox.Text = st.Profile;
+        TokenBox.Password = st.Token;
+        FolderBox.Text = st.LocalFolder != "" ? st.LocalFolder
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "source", "repos");
+        Closing += (_, _) => SaveSettings();
         Http.DefaultRequestHeaders.UserAgent.ParseAdd("RepoSync");
+    }
+
+    void SaveSettings()
+    {
+        try { new Settings { Profile = UserBox.Text.Trim(), LocalFolder = FolderBox.Text.Trim(), Token = TokenBox.Password }.Save(); }
+        catch { /* non-fatal */ }
     }
 
     void Browse_Click(object s, RoutedEventArgs e)
@@ -45,25 +91,38 @@ public partial class MainWindow : Window
 
     async void Load_Click(object s, RoutedEventArgs e)
     {
-        var user = UserBox.Text.Trim();
+        var user = UserBox.Text.Trim().TrimEnd('/');
+        user = user[(user.LastIndexOf('/') + 1)..]; // accept full profile URL
         var token = TokenBox.Password;
         if (user == "" && token == "") { MessageBox.Show("Enter a profile name or token."); return; }
+        SaveSettings();
         LoadBtn.IsEnabled = false;
         _repos.Clear();
         try
         {
             Http.DefaultRequestHeaders.Authorization = token == "" ? null : new AuthenticationHeaderValue("Bearer", token);
             // With a token (and no profile) list the token owner's repos incl. private; otherwise public repos of the profile.
-            var baseUrl = user == "" ? "https://api.github.com/user/repos?per_page=100" : $"https://api.github.com/users/{Uri.EscapeDataString(user)}/repos?per_page=100";
+            var baseUrl = token != "" ? "https://api.github.com/user/repos?per_page=100" : $"https://api.github.com/users/{Uri.EscapeDataString(user)}/repos?per_page=100";
             for (int page = 1; ; page++)
             {
                 var json = await Http.GetStringAsync($"{baseUrl}&page={page}");
                 using var doc = JsonDocument.Parse(json);
                 var arr = doc.RootElement.EnumerateArray().ToList();
-                foreach (var r in arr)
-                    _repos.Add(new RepoItem { Name = r.GetProperty("name").GetString()!, CloneUrl = r.GetProperty("clone_url").GetString()! });
+                foreach (var r in arr.Where(x => token != "" || user == "" || string.Equals(x.GetProperty("owner").GetProperty("login").GetString(), user, StringComparison.OrdinalIgnoreCase)))
+                    _repos.Add(new RepoItem { Name = r.GetProperty("name").GetString()!, CloneUrl = r.GetProperty("clone_url").GetString()!, Private = r.GetProperty("private").GetBoolean() });
                 if (arr.Count < 100) break;
             }
+            string who = "no token";
+            if (token != "")
+            {
+                try { using var d = JsonDocument.Parse(await Http.GetStringAsync("https://api.github.com/user")); who = "token user: " + d.RootElement.GetProperty("login").GetString(); }
+                catch (Exception ex) { who = "TOKEN REJECTED: " + ex.Message; }
+            }
+            Title = $"Repo Sync v4 - {_repos.Count} repos ({_repos.Count(r => r.Private)} private), {who}";
+            if (_repos.Count == 0)
+                MessageBox.Show(token != ""
+                    ? "GitHub returned no repos for this token. For a fine-grained token, set Repository access to 'All repositories' (or select repos) and the right Resource owner."
+                    : $"No public repos found for '{user}'. Private repos need a token.");
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Load failed"); }
         finally { LoadBtn.IsEnabled = true; }
