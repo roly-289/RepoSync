@@ -1,0 +1,35 @@
+<Window x:Class="RepoSync.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Repo Sync" Height="600" Width="900">
+  <Grid Margin="10">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+      <TextBlock Text="GitHub profile:" VerticalAlignment="Center"/>
+      <TextBox x:Name="UserBox" Width="150" Margin="6,0,12,0"/>
+      <TextBlock Text="Token (optional):" VerticalAlignment="Center"/>
+      <PasswordBox x:Name="TokenBox" Width="150" Margin="6,0,12,0"/>
+      <Button x:Name="LoadBtn" Content="Load repos" Padding="12,2" Click="Load_Click"/>
+    </StackPanel>
+    <DockPanel Grid.Row="1" Margin="0,0,0,8">
+      <TextBlock Text="Local folder:" VerticalAlignment="Center"/>
+      <Button DockPanel.Dock="Right" Content="Browse…" Padding="12,2" Click="Browse_Click"/>
+      <TextBox x:Name="FolderBox" Margin="6,0,6,0"/>
+    </DockPanel>
+    <DataGrid x:Name="Grid" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+      <DataGrid.Columns>
+        <DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
+        <DataGridTextColumn Header="Repo" Binding="{Binding Name}" IsReadOnly="True" Width="250"/>
+        <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="*"/>
+      </DataGrid.Columns>
+    </DataGrid>
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+      <Button Content="Select all" Padding="12,2" Click="SelectAll_Click"/>
+      <Button Content="Select none" Padding="12,2" Margin="6,0" Click="SelectNone_Click"/>
+      <Button x:Name="UpdateBtn" Content="Pull latest &amp; checkout latest branch" Padding="12,2" Click="Update_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>
