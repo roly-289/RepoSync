@@ -8,9 +8,7 @@
     <Version>1.2.0</Version>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="BranchKit\BranchKit.csproj" />
-    <Compile Remove="BranchKit\**" />
-    <Page Remove="BranchKit\**" />
+    <PackageReference Include="BranchKit" Version="1.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
 </Project>
