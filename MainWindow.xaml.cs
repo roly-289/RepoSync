@@ -308,6 +308,8 @@ public partial class MainWindow : Window
             try { r.Status = await Task.Run(() => Sync(root, r)); }
             catch (Exception ex) { r.Status = "Error: " + ex.Message; }
             if (r.Status.StartsWith("OK")) r.LastUpdated = DateTime.Now; // only successful syncs
+            try { r.RemoteState = await Task.Run(() => CheckRemote(root, r)); } // refresh Remote column
+            catch (Exception ex) { r.RemoteState = "Error: " + ex.Message; }
         }
         Grid.IsEnabled = true;
         UpdateBtn.IsEnabled = true;
