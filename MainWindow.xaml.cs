@@ -8,6 +8,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using BranchKit;
 
 namespace RepoSync;
 
@@ -82,6 +84,57 @@ public partial class MainWindow : Window
     }
 
     void ShowSaved(DateTime? t) => SavedText.Text = t == null ? "Not saved yet" : $"Last saved: {t:dd MMM yyyy HH:mm:ss}";
+
+    int _graphSeq;
+
+    void Grid_SelectionChanged(object s, SelectionChangedEventArgs e) => _ = ShowGraph(Grid.SelectedItem as RepoItem);
+
+    async Task ShowGraph(RepoItem? r)
+    {
+        var seq = ++_graphSeq;
+        if (r == null) return;
+        var dir = Path.Combine(FolderBox.Text.Trim(), r.Name);
+        if (!Directory.Exists(Path.Combine(dir, ".git")))
+        {
+            Graph.Tree = null;
+            GraphInfo.Text = $"{r.Name}: not cloned yet";
+            return;
+        }
+        GraphInfo.Text = $"{r.Name}: loading…";
+        var (tree, info) = await Task.Run(() => BuildTree(dir));
+        if (seq != _graphSeq) return; // selection changed meanwhile
+        Graph.Tree = tree;
+        GraphInfo.Text = $"{r.Name}: {info}";
+    }
+
+    // Commit graph (first-parent tree, latest 300 commits across all refs). Current = HEAD.
+    static (BranchTree? tree, string info) BuildTree(string dir)
+    {
+        const int Max = 300;
+        var (code, log) = Git(dir, $"log --all --topo-order --reverse -n {Max} --format=%H%x1f%P%x1f%ct%x1f%D%x1f%s");
+        if (code != 0 || log == "") return (null, "no commits");
+
+        var map = new Dictionary<string, BranchNode>();
+        BranchTree? tree = null;
+        BranchNode? root = null;
+        foreach (var line in log.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var f = line.TrimEnd('\r').Split('\x1f');
+            if (f.Length < 5) continue;
+            var label = f[3] == "" ? f[4] : $"{f[4]}  [{f[3]}]";
+            var time = DateTimeOffset.FromUnixTimeSeconds(long.Parse(f[2])).LocalDateTime;
+            var node = new BranchNode<string>(f[0], label, time);
+            var firstParent = f[1].Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (tree == null) { tree = new BranchTree(node); root = node; }
+            else tree.Add(node, firstParent != null && map.TryGetValue(firstParent, out var p) ? p : root);
+            map[f[0]] = node;
+        }
+        if (tree == null) return (null, "no commits");
+
+        var head = Git(dir, "rev-parse HEAD").output;
+        if (map.TryGetValue(head, out var h)) tree.MoveTo(h);
+        return (tree, $"{map.Count} commits" + (map.Count == Max ? " (latest shown)" : ""));
+    }
 
     void SaveSettings()
     {
@@ -164,6 +217,7 @@ public partial class MainWindow : Window
         }
         UpdateBtn.IsEnabled = true;
         SaveSettings();
+        _ = ShowGraph(Grid.SelectedItem as RepoItem);
     }
 
     static string Sync(string root, RepoItem r)
@@ -195,7 +249,8 @@ public partial class MainWindow : Window
         var psi = new ProcessStartInfo("git", args)
         {
             WorkingDirectory = dir, RedirectStandardOutput = true, RedirectStandardError = true,
-            UseShellExecute = false, CreateNoWindow = true
+            UseShellExecute = false, CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8, StandardErrorEncoding = Encoding.UTF8
         };
         psi.Environment["GIT_TERMINAL_PROMPT"] = "0";
         using var p = Process.Start(psi)!;

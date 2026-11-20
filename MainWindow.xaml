@@ -1,6 +1,7 @@
 <Window x:Class="RepoSync.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:bk="clr-namespace:BranchKit;assembly=BranchKit"
         Title="Repo Sync" Height="600" Width="900">
   <Grid Margin="10">
     <Grid.RowDefinitions>
@@ -19,7 +20,9 @@
       <Button DockPanel.Dock="Right" Content="Browse…" Padding="12,2" Click="Browse_Click"/>
       <TextBox x:Name="FolderBox" Margin="6,0,6,0"/>
     </DockPanel>
-    <DataGrid x:Name="Grid" Grid.Row="2" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+    <Grid Grid.Row="2">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="5"/><ColumnDefinition Width="380"/></Grid.ColumnDefinitions>
+    <DataGrid x:Name="Grid" SelectionChanged="Grid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
       <DataGrid.Columns>
         <DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
         <DataGridTextColumn Header="Repo" Binding="{Binding Name}" IsReadOnly="True" Width="250"/>
@@ -27,6 +30,14 @@
         <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="*"/>
       </DataGrid.Columns>
     </DataGrid>
+    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>
+    <DockPanel Grid.Column="2">
+      <TextBlock x:Name="GraphInfo" DockPanel.Dock="Top" Margin="6,0,0,4" Foreground="Gray" Text="Select a repo to see its branches"/>
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <bk:BranchGraphView x:Name="Graph" RowHeight="24" Background="White" Foreground="Black"/>
+      </ScrollViewer>
+    </DockPanel>
+    </Grid>
     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
       <Button Content="Select all" Padding="12,2" Click="SelectAll_Click"/>
       <Button Content="Select none" Padding="12,2" Margin="6,0" Click="SelectNone_Click"/>
