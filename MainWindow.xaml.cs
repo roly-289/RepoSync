@@ -238,8 +238,8 @@ public partial class MainWindow : Window
             catch (Exception ex) { r.RemoteState = "Error: " + ex.Message; }
             finally { gate.Release(); }
         }));
-        var behind = _repos.Count(r => r.RemoteState.StartsWith("Behind") || r.RemoteState.Contains("behind"));
-        CheckText.Text = $"{behind} of {_repos.Count} behind remote (checked {DateTime.Now:HH:mm:ss})";
+        var behind = _repos.Count(r => r.RemoteState.Contains("ehind") || r.RemoteState.Contains("newer branch"));
+        CheckText.Text = $"{behind} of {_repos.Count} need updating (checked {DateTime.Now:HH:mm:ss})";
         CheckBtn.IsEnabled = UpdateBtn.IsEnabled = true;
         _busy = false;
         SaveSettings();
@@ -247,6 +247,22 @@ public partial class MainWindow : Window
 
     // Fetches, then compares the checked-out branch with its upstream.
     static string CheckRemote(string root, RepoItem r)
+    {
+        var state = CheckUpstream(root, r);
+        if (state.StartsWith("Not cloned") || state.StartsWith("Fetch failed")) return state;
+
+        // Also flag when another remote branch has newer commits than the one checked out
+        var dir = Path.Combine(root, r.Name);
+        var cur = Git(dir, "rev-parse --abbrev-ref HEAD").output;
+        var latest = Git(dir, "for-each-ref --sort=-committerdate --count=3 --format=%(refname:short) refs/remotes/origin").output
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim())
+            .FirstOrDefault(x => x != "origin" && x != "origin/HEAD");
+        if (latest != null && latest["origin/".Length..] != cur)
+            state += $" · newer branch: {latest["origin/".Length..]}";
+        return state;
+    }
+
+    static string CheckUpstream(string root, RepoItem r)
     {
         var dir = Path.Combine(root, r.Name);
         if (!Directory.Exists(Path.Combine(dir, ".git"))) return "Not cloned";
