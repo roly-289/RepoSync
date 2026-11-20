@@ -298,7 +298,7 @@ public partial class MainWindow : Window
     }
 
     // Highlights a cell that changed: gold flash fading out over a few seconds.
-    void Flash(RepoItem item, string header)
+    void Flash(RepoItem item, string header, Color color)
     {
         try
         {
@@ -309,9 +309,9 @@ public partial class MainWindow : Window
             var presenter = FindChild<System.Windows.Controls.Primitives.DataGridCellsPresenter>(row);
             if (presenter?.ItemContainerGenerator.ContainerFromIndex(col.DisplayIndex) is not DataGridCell cell) return;
 
-            var brush = new SolidColorBrush(Colors.Gold);
+            var brush = new SolidColorBrush(color);
             cell.Background = brush;
-            var anim = new ColorAnimation(Colors.Gold, Color.FromArgb(0, 255, 215, 0), TimeSpan.FromSeconds(3))
+            var anim = new ColorAnimation(color, Color.FromArgb(0, color.R, color.G, color.B), TimeSpan.FromSeconds(3))
             {
                 BeginTime = TimeSpan.FromSeconds(0.6), // hold the highlight briefly
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn },
@@ -353,8 +353,16 @@ public partial class MainWindow : Window
             if (r.Status.StartsWith("OK")) r.LastUpdated = DateTime.Now; // only successful syncs
             try { r.RemoteState = await Task.Run(() => CheckRemote(root, r)); } // refresh Remote column
             catch (Exception ex) { r.RemoteState = "Error: " + ex.Message; }
-            if (oldBranch != "" && r.Branch != oldBranch) Flash(r, "Branch");
-            if (oldCommit != "" && r.LastCommit != oldCommit) Flash(r, "Last commit");
+            var branchChanged = oldBranch != "" && r.Branch != oldBranch;
+            var commitChanged = oldCommit != "" && r.LastCommit != oldCommit;
+            if (branchChanged) Flash(r, "Branch", Colors.Gold);
+            if (commitChanged) Flash(r, "Last commit", Colors.Gold);
+            if (r.Status == "OK" && oldCommit != "") // we know what it was before, so we can say what happened
+            {
+                var changed = branchChanged || commitChanged;
+                r.Status = changed ? "OK — updated" : "OK — no changes";
+                Flash(r, "Status", changed ? Colors.LightGreen : Colors.LightSteelBlue);
+            }
         }
         Grid.IsEnabled = true;
         UpdateBtn.IsEnabled = true;
