@@ -77,7 +77,17 @@ public partial class MainWindow : Window
         TokenBox.Password = st.Token;
         FolderBox.Text = st.LocalFolder != "" ? st.LocalFolder
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "source", "repos");
-        foreach (var r in st.Repos) _repos.Add(r);
+        _repos.CollectionChanged += (_, e) =>
+        {
+            if (e.NewItems != null)
+                foreach (RepoItem i in e.NewItems)
+                    i.PropertyChanged += (_, a) => { if (a.PropertyName == nameof(RepoItem.IsSelected)) SaveSettings(); };
+        };
+        foreach (var r in st.Repos)
+        {
+            if (r.Status == "Working…") r.Status = "Interrupted";
+            _repos.Add(r);
+        }
         ShowSaved(st.LastSaved);
         Closing += (_, _) => SaveSettings();
         Http.DefaultRequestHeaders.UserAgent.ParseAdd("RepoSync");
@@ -202,20 +212,33 @@ public partial class MainWindow : Window
         }
     }
 
-    async void Update_Click(object s, RoutedEventArgs e)
+    void Update_Click(object s, RoutedEventArgs e) => _ = UpdateRepos(_repos.Where(r => r.IsSelected).ToList());
+
+    void RowUpdate_Click(object s, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)s).DataContext is RepoItem r) _ = UpdateRepos([r]);
+    }
+
+    bool _busy;
+
+    async Task UpdateRepos(List<RepoItem> sel)
     {
         var root = FolderBox.Text.Trim();
-        var sel = _repos.Where(r => r.IsSelected).ToList();
-        if (sel.Count == 0 || root == "") return;
+        if (_busy || sel.Count == 0 || root == "") return;
+        _busy = true;
         Directory.CreateDirectory(root);
         UpdateBtn.IsEnabled = false;
+        Grid.IsEnabled = false; // disables row buttons while running
         foreach (var r in sel)
         {
             r.Status = "Working…";
             try { r.Status = await Task.Run(() => Sync(root, r)); }
             catch (Exception ex) { r.Status = "Error: " + ex.Message; }
+            r.Status += $"  ({DateTime.Now:dd MMM HH:mm})";
         }
+        Grid.IsEnabled = true;
         UpdateBtn.IsEnabled = true;
+        _busy = false;
         SaveSettings();
         _ = ShowGraph(Grid.SelectedItem as RepoItem);
     }
