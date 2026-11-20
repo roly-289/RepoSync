@@ -17,7 +17,7 @@ public class RepoItem : INotifyPropertyChanged
 {
     string _status = "";
     DateTime? _updated;
-    string _remote = "";
+    string _remote = "", _branch = "", _commit = "";
     bool _sel;
     public string Name { get; set; } = "";
     public string CloneUrl { get; set; } = "";
@@ -25,6 +25,8 @@ public class RepoItem : INotifyPropertyChanged
     public bool IsSelected { get => _sel; set { _sel = value; Raise(nameof(IsSelected)); } }
     public DateTime? LastUpdated { get => _updated; set { _updated = value; Raise(nameof(LastUpdated)); } }
     public string RemoteState { get => _remote; set { _remote = value; Raise(nameof(RemoteState)); } }
+    public string Branch { get => _branch; set { _branch = value; Raise(nameof(Branch)); } }
+    public string LastCommit { get => _commit; set { _commit = value; Raise(nameof(LastCommit)); } }
     public string Status { get => _status; set { _status = value; Raise(nameof(Status)); } }
     public event PropertyChangedEventHandler? PropertyChanged;
     void Raise(string n) => PropertyChanged?.Invoke(this, new(n));
@@ -264,6 +266,8 @@ public partial class MainWindow : Window
         // Also flag when another remote branch has newer commits than the one checked out
         var dir = Path.Combine(root, r.Name);
         var cur = Git(dir, "rev-parse --abbrev-ref HEAD").output;
+        r.Branch = cur;
+        r.LastCommit = Git(dir, "log -1 --format=%s").output;
         var latest = Git(dir, "for-each-ref --sort=-committerdate --count=3 --format=%(refname:short) refs/remotes/origin").output
             .Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim())
             .FirstOrDefault(x => x != "origin" && x != "origin/HEAD");
@@ -339,7 +343,8 @@ public partial class MainWindow : Window
         var co = Git(dir, $"checkout \"{branch}\"");
         if (co.code != 0) return $"Checkout {branch} failed: {co.output}";
         var pull = Git(dir, "pull --ff-only");
-        return pull.code == 0 ? $"OK — {branch}" : $"Pull failed on {branch}: {pull.output}";
+        r.Branch = branch;
+        return pull.code == 0 ? "OK" : $"Pull failed on {branch}: {pull.output}";
     }
 
     static (int code, string output) Git(string dir, string args)
