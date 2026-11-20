@@ -99,6 +99,15 @@ public partial class MainWindow : Window
 
     void ShowSaved(DateTime? t) => SavedText.Text = t == null ? "Not saved yet" : $"Last saved: {t:dd MMM yyyy HH:mm:ss}";
 
+    // Profile name (accepts a full URL). Passed to git so Git Credential Manager doesn't ask which account to use.
+    static string? GitUser;
+
+    string ProfileName()
+    {
+        var u = UserBox.Text.Trim().TrimEnd('/');
+        return u[(u.LastIndexOf('/') + 1)..];
+    }
+
     int _graphSeq;
 
     void Grid_SelectionChanged(object s, SelectionChangedEventArgs e) => _ = ShowGraph(Grid.SelectedItem as RepoItem);
@@ -228,6 +237,7 @@ public partial class MainWindow : Window
         var root = FolderBox.Text.Trim();
         if (_busy || _repos.Count == 0 || root == "") return;
         _busy = true;
+        GitUser = ProfileName();
         CheckBtn.IsEnabled = UpdateBtn.IsEnabled = false;
         foreach (var r in _repos) r.RemoteState = "Checking…";
         var gate = new SemaphoreSlim(4); // a few fetches at a time
@@ -288,6 +298,7 @@ public partial class MainWindow : Window
         var root = FolderBox.Text.Trim();
         if (_busy || sel.Count == 0 || root == "") return;
         _busy = true;
+        GitUser = ProfileName();
         Directory.CreateDirectory(root);
         UpdateBtn.IsEnabled = false;
         Grid.IsEnabled = false; // disables row buttons while running
@@ -331,6 +342,8 @@ public partial class MainWindow : Window
 
     static (int code, string output) Git(string dir, string args)
     {
+        if (!string.IsNullOrEmpty(GitUser))
+            args = $"-c credential.https://github.com.username={GitUser} " + args;
         var psi = new ProcessStartInfo("git", args)
         {
             WorkingDirectory = dir, RedirectStandardOutput = true, RedirectStandardError = true,
