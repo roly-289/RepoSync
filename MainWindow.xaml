@@ -32,6 +32,7 @@
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridCheckBoxColumn Header="Private" Binding="{Binding Private}" IsReadOnly="True"/>
+        <DataGridTextColumn Header="Last updated" Binding="{Binding LastUpdated, StringFormat=dd MMM yyyy HH:mm}" IsReadOnly="True" Width="120"/>
         <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="*"/>
       </DataGrid.Columns>
     </DataGrid>

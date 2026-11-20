@@ -16,11 +16,13 @@ namespace RepoSync;
 public class RepoItem : INotifyPropertyChanged
 {
     string _status = "";
+    DateTime? _updated;
     bool _sel;
     public string Name { get; set; } = "";
     public string CloneUrl { get; set; } = "";
     public bool Private { get; set; }
     public bool IsSelected { get => _sel; set { _sel = value; Raise(nameof(IsSelected)); } }
+    public DateTime? LastUpdated { get => _updated; set { _updated = value; Raise(nameof(LastUpdated)); } }
     public string Status { get => _status; set { _status = value; Raise(nameof(Status)); } }
     public event PropertyChangedEventHandler? PropertyChanged;
     void Raise(string n) => PropertyChanged?.Invoke(this, new(n));
@@ -234,7 +236,7 @@ public partial class MainWindow : Window
             r.Status = "Working…";
             try { r.Status = await Task.Run(() => Sync(root, r)); }
             catch (Exception ex) { r.Status = "Error: " + ex.Message; }
-            r.Status += $"  ({DateTime.Now:dd MMM HH:mm})";
+            if (r.Status.StartsWith("OK")) r.LastUpdated = DateTime.Now; // only successful syncs
         }
         Grid.IsEnabled = true;
         UpdateBtn.IsEnabled = true;
