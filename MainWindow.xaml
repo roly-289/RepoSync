@@ -26,8 +26,8 @@
       <DataGrid.Columns>
         <DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
         <DataGridTextColumn Header="Repo" Binding="{Binding Name}" IsReadOnly="True" Width="250"/>
-        <DataGridTextColumn Header="Branch" Binding="{Binding Branch}" IsReadOnly="True" Width="130"/>
-        <DataGridTextColumn Header="Last commit" Binding="{Binding LastCommit}" IsReadOnly="True" Width="250"/>
+        <DataGridTextColumn Header="Branch" Binding="{Binding BranchShown}" IsReadOnly="True" Width="130"/>
+        <DataGridTextColumn Header="Last commit" Binding="{Binding CommitShown}" IsReadOnly="True" Width="250"/>
         <DataGridTemplateColumn Header="">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate><Button Content="Update" Padding="8,0" Margin="2" Click="RowUpdate_Click"/></DataTemplate>
@@ -36,7 +36,16 @@
         <DataGridCheckBoxColumn Header="Private" Binding="{Binding Private}" IsReadOnly="True"/>
         <DataGridTextColumn Header="Remote" Binding="{Binding RemoteState}" IsReadOnly="True" Width="220"/>
         <DataGridTextColumn Header="Last updated" Binding="{Binding LastUpdated, StringFormat=dd MMM yyyy HH:mm}" IsReadOnly="True" Width="120"/>
-        <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="*"/>
+        <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="*">
+          <DataGridTextColumn.CellStyle>
+            <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding Outcome}" Value="updated"><Setter Property="Background" Value="#4090EE90"/></DataTrigger>
+                <DataTrigger Binding="{Binding Outcome}" Value="unchanged"><Setter Property="Background" Value="#40B0C4DE"/></DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </DataGridTextColumn.CellStyle>
+        </DataGridTextColumn>
       </DataGrid.Columns>
     </DataGrid>
     <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>

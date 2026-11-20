@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -19,7 +20,7 @@ public class RepoItem : INotifyPropertyChanged
 {
     string _status = "";
     DateTime? _updated;
-    string _remote = "", _branch = "", _commit = "";
+    string _remote = "", _branch = "", _commit = "", _branchShown = "", _commitShown = "", _outcome = "";
     bool _sel;
     public string Name { get; set; } = "";
     public string CloneUrl { get; set; } = "";
@@ -27,8 +28,16 @@ public class RepoItem : INotifyPropertyChanged
     public bool IsSelected { get => _sel; set { _sel = value; Raise(nameof(IsSelected)); } }
     public DateTime? LastUpdated { get => _updated; set { _updated = value; Raise(nameof(LastUpdated)); } }
     public string RemoteState { get => _remote; set { _remote = value; Raise(nameof(RemoteState)); } }
-    public string Branch { get => _branch; set { _branch = value; Raise(nameof(Branch)); } }
-    public string LastCommit { get => _commit; set { _commit = value; Raise(nameof(LastCommit)); } }
+    public string Branch { get => _branch; set { _branch = value; Raise(nameof(Branch)); if (!Hold) BranchShown = value; } }
+    public string LastCommit { get => _commit; set { _commit = value; Raise(nameof(LastCommit)); if (!Hold) CommitShown = value; } }
+
+    // What the grid displays. Normally equal to Branch / LastCommit, but while an update is animating
+    // (Hold = true) the UI types the text out itself.
+    [JsonIgnore] public bool Hold { get; set; }
+    [JsonIgnore] public string BranchShown { get => _branchShown; set { _branchShown = value; Raise(nameof(BranchShown)); } }
+    [JsonIgnore] public string CommitShown { get => _commitShown; set { _commitShown = value; Raise(nameof(CommitShown)); } }
+    /// <summary>"updated", "unchanged" or "" – drives the faint tint on the Status cell.</summary>
+    [JsonIgnore] public string Outcome { get => _outcome; set { _outcome = value; Raise(nameof(Outcome)); } }
     public string Status { get => _status; set { _status = value; Raise(nameof(Status)); } }
     public event PropertyChangedEventHandler? PropertyChanged;
     void Raise(string n) => PropertyChanged?.Invoke(this, new(n));
@@ -298,7 +307,7 @@ public partial class MainWindow : Window
     }
 
     // Highlights a cell that changed: gold flash fading out over a few seconds.
-    void Flash(RepoItem item, string header, Color color)
+    void Flash(RepoItem item, string header, Color color, Color settle)
     {
         try
         {
@@ -311,7 +320,7 @@ public partial class MainWindow : Window
 
             var brush = new SolidColorBrush(color);
             cell.Background = brush;
-            var anim = new ColorAnimation(color, Color.FromArgb(0, color.R, color.G, color.B), TimeSpan.FromSeconds(3))
+            var anim = new ColorAnimation(color, settle, TimeSpan.FromSeconds(3))
             {
                 BeginTime = TimeSpan.FromSeconds(0.6), // hold the highlight briefly
                 EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn },
@@ -333,6 +342,14 @@ public partial class MainWindow : Window
         return null;
     }
 
+    // Erase the old text character by character, then type the new text. Total ≈ 1.5 s.
+    static async Task TypeSwap(string old, string @new, Action<string> set)
+    {
+        var per = Math.Clamp(1500 / Math.Max(1, old.Length + @new.Length), 4, 30);
+        for (int i = old.Length - 1; i >= 0; i--) { set(old[..i]); await Task.Delay(per); }
+        for (int i = 1; i <= @new.Length; i++) { set(@new[..i]); await Task.Delay(per); }
+    }
+
     bool _busy;
 
     async Task UpdateRepos(List<RepoItem> sel)
@@ -347,6 +364,8 @@ public partial class MainWindow : Window
         foreach (var r in sel)
         {
             var (oldBranch, oldCommit) = (r.Branch, r.LastCommit);
+            r.Hold = true; // keep showing the old text until we animate the swap
+            r.Outcome = "";
             r.Status = "Working…";
             try { r.Status = await Task.Run(() => Sync(root, r)); }
             catch (Exception ex) { r.Status = "Error: " + ex.Message; }
@@ -355,13 +374,22 @@ public partial class MainWindow : Window
             catch (Exception ex) { r.RemoteState = "Error: " + ex.Message; }
             var branchChanged = oldBranch != "" && r.Branch != oldBranch;
             var commitChanged = oldCommit != "" && r.LastCommit != oldCommit;
-            if (branchChanged) Flash(r, "Branch", Colors.Gold);
-            if (commitChanged) Flash(r, "Last commit", Colors.Gold);
+            try
+            {
+                await Task.WhenAll(
+                    branchChanged ? TypeSwap(oldBranch, r.Branch, v => r.BranchShown = v) : Task.CompletedTask,
+                    commitChanged ? TypeSwap(oldCommit, r.LastCommit, v => r.CommitShown = v) : Task.CompletedTask);
+            }
+            finally { r.Hold = false; r.BranchShown = r.Branch; r.CommitShown = r.LastCommit; }
+
             if (r.Status == "OK" && oldCommit != "") // we know what it was before, so we can say what happened
             {
                 var changed = branchChanged || commitChanged;
                 r.Status = changed ? "OK — updated" : "OK — no changes";
-                Flash(r, "Status", changed ? Colors.LightGreen : Colors.LightSteelBlue);
+                r.Outcome = changed ? "updated" : "unchanged";
+                // strong colour, settling to the faint tint the cell style keeps afterwards
+                var strong = changed ? Colors.LightGreen : Colors.LightSteelBlue;
+                Flash(r, "Status", strong, Color.FromArgb(0x40, strong.R, strong.G, strong.B));
             }
         }
         Grid.IsEnabled = true;
