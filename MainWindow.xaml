@@ -6,7 +6,7 @@
   <Grid Margin="10">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
     </Grid.RowDefinitions>
     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
       <TextBlock Text="GitHub profile:" VerticalAlignment="Center"/>
@@ -20,7 +20,7 @@
       <Button DockPanel.Dock="Right" Content="Browse…" Padding="12,2" Click="Browse_Click"/>
       <TextBox x:Name="FolderBox" Margin="6,0,6,0"/>
     </DockPanel>
-    <Grid Grid.Row="2">
+    <Grid Grid.Row="3">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="5"/><ColumnDefinition Width="380"/></Grid.ColumnDefinitions>
     <DataGrid x:Name="Grid" SelectionChanged="Grid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
       <DataGrid.Columns>
@@ -47,7 +47,7 @@
       </ScrollViewer>
     </DockPanel>
     </Grid>
-    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
       <Button Content="Select all" Padding="12,2" Click="SelectAll_Click"/>
       <Button Content="Select none" Padding="12,2" Margin="6,0" Click="SelectNone_Click"/>
       <Button x:Name="CheckBtn" Content="Check for updates" Padding="12,2" Margin="0,0,6,0" Click="Check_Click"/>
