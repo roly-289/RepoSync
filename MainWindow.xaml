@@ -31,6 +31,7 @@
       <Button Content="Select all" Padding="12,2" Click="SelectAll_Click"/>
       <Button Content="Select none" Padding="12,2" Margin="6,0" Click="SelectNone_Click"/>
       <Button x:Name="UpdateBtn" Content="Pull latest &amp; checkout latest branch" Padding="12,2" Click="Update_Click"/>
+      <TextBlock x:Name="SavedText" Margin="16,0,0,0" VerticalAlignment="Center" Foreground="Gray"/>
     </StackPanel>
   </Grid>
 </Window>

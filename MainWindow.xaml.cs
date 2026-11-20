@@ -28,6 +28,8 @@ public class Settings
 {
     public string Profile { get; set; } = "";
     public string LocalFolder { get; set; } = "";
+    public DateTime? LastSaved { get; set; }
+    public List<RepoItem> Repos { get; set; } = new();
     public string ProtectedToken { get; set; } = ""; // DPAPI-encrypted (current Windows user)
 
     static readonly string PathFile = Path.Combine(
@@ -41,6 +43,7 @@ public class Settings
 
     public void Save()
     {
+        LastSaved = DateTime.Now;
         Directory.CreateDirectory(Path.GetDirectoryName(PathFile)!);
         File.WriteAllText(PathFile, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
     }
@@ -72,13 +75,22 @@ public partial class MainWindow : Window
         TokenBox.Password = st.Token;
         FolderBox.Text = st.LocalFolder != "" ? st.LocalFolder
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "source", "repos");
+        foreach (var r in st.Repos) _repos.Add(r);
+        ShowSaved(st.LastSaved);
         Closing += (_, _) => SaveSettings();
         Http.DefaultRequestHeaders.UserAgent.ParseAdd("RepoSync");
     }
 
+    void ShowSaved(DateTime? t) => SavedText.Text = t == null ? "Not saved yet" : $"Last saved: {t:dd MMM yyyy HH:mm:ss}";
+
     void SaveSettings()
     {
-        try { new Settings { Profile = UserBox.Text.Trim(), LocalFolder = FolderBox.Text.Trim(), Token = TokenBox.Password }.Save(); }
+        try
+        {
+            var st = new Settings { Profile = UserBox.Text.Trim(), LocalFolder = FolderBox.Text.Trim(), Token = TokenBox.Password, Repos = _repos.ToList() };
+            st.Save();
+            ShowSaved(st.LastSaved);
+        }
         catch { /* non-fatal */ }
     }
 
@@ -99,6 +111,7 @@ public partial class MainWindow : Window
         if (user == "" && token == "") { MessageBox.Show("Enter a profile name or token."); return; }
         SaveSettings();
         LoadBtn.IsEnabled = false;
+        var old = _repos.ToDictionary(r => r.Name);
         _repos.Clear();
         try
         {
@@ -127,7 +140,13 @@ public partial class MainWindow : Window
                     : $"No public repos found for '{user}'. Private repos need a token.");
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "Load failed"); }
-        finally { LoadBtn.IsEnabled = true; }
+        finally
+        {
+            foreach (var r in _repos)
+                if (old.TryGetValue(r.Name, out var o)) { r.IsSelected = o.IsSelected; r.Status = o.Status; }
+            LoadBtn.IsEnabled = true;
+            SaveSettings();
+        }
     }
 
     async void Update_Click(object s, RoutedEventArgs e)
@@ -144,6 +163,7 @@ public partial class MainWindow : Window
             catch (Exception ex) { r.Status = "Error: " + ex.Message; }
         }
         UpdateBtn.IsEnabled = true;
+        SaveSettings();
     }
 
     static string Sync(string root, RepoItem r)
