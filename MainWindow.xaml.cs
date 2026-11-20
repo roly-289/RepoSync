@@ -9,6 +9,8 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using BranchKit;
 
 namespace RepoSync;
@@ -295,6 +297,42 @@ public partial class MainWindow : Window
         };
     }
 
+    // Highlights a cell that changed: gold flash fading out over a few seconds.
+    void Flash(RepoItem item, string header)
+    {
+        try
+        {
+            Grid.UpdateLayout();
+            var col = Grid.Columns.FirstOrDefault(c => (string?)c.Header == header);
+            if (col == null || Grid.ItemContainerGenerator.ContainerFromItem(item) is not DataGridRow row) return;
+            row.UpdateLayout();
+            var presenter = FindChild<System.Windows.Controls.Primitives.DataGridCellsPresenter>(row);
+            if (presenter?.ItemContainerGenerator.ContainerFromIndex(col.DisplayIndex) is not DataGridCell cell) return;
+
+            var brush = new SolidColorBrush(Colors.Gold);
+            cell.Background = brush;
+            var anim = new ColorAnimation(Colors.Gold, Color.FromArgb(0, 255, 215, 0), TimeSpan.FromSeconds(3))
+            {
+                BeginTime = TimeSpan.FromSeconds(0.6), // hold the highlight briefly
+                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn },
+            };
+            anim.Completed += (_, _) => cell.ClearValue(BackgroundProperty);
+            brush.BeginAnimation(SolidColorBrush.ColorProperty, anim);
+        }
+        catch { /* cosmetic only */ }
+    }
+
+    static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T t) return t;
+            if (FindChild<T>(child) is { } found) return found;
+        }
+        return null;
+    }
+
     bool _busy;
 
     async Task UpdateRepos(List<RepoItem> sel)
@@ -308,12 +346,15 @@ public partial class MainWindow : Window
         Grid.IsEnabled = false; // disables row buttons while running
         foreach (var r in sel)
         {
+            var (oldBranch, oldCommit) = (r.Branch, r.LastCommit);
             r.Status = "Working…";
             try { r.Status = await Task.Run(() => Sync(root, r)); }
             catch (Exception ex) { r.Status = "Error: " + ex.Message; }
             if (r.Status.StartsWith("OK")) r.LastUpdated = DateTime.Now; // only successful syncs
             try { r.RemoteState = await Task.Run(() => CheckRemote(root, r)); } // refresh Remote column
             catch (Exception ex) { r.RemoteState = "Error: " + ex.Message; }
+            if (oldBranch != "" && r.Branch != oldBranch) Flash(r, "Branch");
+            if (oldCommit != "" && r.LastCommit != oldCommit) Flash(r, "Last commit");
         }
         Grid.IsEnabled = true;
         UpdateBtn.IsEnabled = true;
