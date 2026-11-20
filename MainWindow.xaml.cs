@@ -17,12 +17,14 @@ public class RepoItem : INotifyPropertyChanged
 {
     string _status = "";
     DateTime? _updated;
+    string _remote = "";
     bool _sel;
     public string Name { get; set; } = "";
     public string CloneUrl { get; set; } = "";
     public bool Private { get; set; }
     public bool IsSelected { get => _sel; set { _sel = value; Raise(nameof(IsSelected)); } }
     public DateTime? LastUpdated { get => _updated; set { _updated = value; Raise(nameof(LastUpdated)); } }
+    public string RemoteState { get => _remote; set { _remote = value; Raise(nameof(RemoteState)); } }
     public string Status { get => _status; set { _status = value; Raise(nameof(Status)); } }
     public event PropertyChangedEventHandler? PropertyChanged;
     void Raise(string n) => PropertyChanged?.Invoke(this, new(n));
@@ -219,6 +221,48 @@ public partial class MainWindow : Window
     void RowUpdate_Click(object s, RoutedEventArgs e)
     {
         if (((FrameworkElement)s).DataContext is RepoItem r) _ = UpdateRepos([r]);
+    }
+
+    async void Check_Click(object s, RoutedEventArgs e)
+    {
+        var root = FolderBox.Text.Trim();
+        if (_busy || _repos.Count == 0 || root == "") return;
+        _busy = true;
+        CheckBtn.IsEnabled = UpdateBtn.IsEnabled = false;
+        foreach (var r in _repos) r.RemoteState = "Checking…";
+        var gate = new SemaphoreSlim(4); // a few fetches at a time
+        await Task.WhenAll(_repos.ToList().Select(async r =>
+        {
+            await gate.WaitAsync();
+            try { r.RemoteState = await Task.Run(() => CheckRemote(root, r)); }
+            catch (Exception ex) { r.RemoteState = "Error: " + ex.Message; }
+            finally { gate.Release(); }
+        }));
+        var behind = _repos.Count(r => r.RemoteState.StartsWith("Behind") || r.RemoteState.Contains("behind"));
+        CheckText.Text = $"{behind} of {_repos.Count} behind remote (checked {DateTime.Now:HH:mm:ss})";
+        CheckBtn.IsEnabled = UpdateBtn.IsEnabled = true;
+        _busy = false;
+        SaveSettings();
+    }
+
+    // Fetches, then compares the checked-out branch with its upstream.
+    static string CheckRemote(string root, RepoItem r)
+    {
+        var dir = Path.Combine(root, r.Name);
+        if (!Directory.Exists(Path.Combine(dir, ".git"))) return "Not cloned";
+        var f = Git(dir, "fetch --all --prune");
+        if (f.code != 0) return "Fetch failed: " + f.output;
+        var (c, o) = Git(dir, "rev-list --left-right --count HEAD...@{u}");
+        if (c != 0) return "No upstream branch";
+        var p = o.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        int ahead = int.Parse(p[0]), behind = int.Parse(p[1]);
+        return (ahead, behind) switch
+        {
+            (0, 0) => "Up to date",
+            (0, _) => $"Behind {behind}",
+            (_, 0) => $"Ahead {ahead}",
+            _ => $"Ahead {ahead}, behind {behind}",
+        };
     }
 
     bool _busy;
