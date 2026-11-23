@@ -228,21 +228,37 @@ public partial class MainWindow : Window
         if (user == "" && token == "") { MessageBox.Show("Enter a profile name or token."); return; }
         SaveSettings();
         LoadBtn.IsEnabled = false;
-        var old = _repos.ToDictionary(r => r.Name);
-        _repos.Clear();
         try
         {
             Http.DefaultRequestHeaders.Authorization = token == "" ? null : new AuthenticationHeaderValue("Bearer", token);
             // With a token (and no profile) list the token owner's repos incl. private; otherwise public repos of the profile.
             var baseUrl = token != "" ? "https://api.github.com/user/repos?per_page=100" : $"https://api.github.com/users/{Uri.EscapeDataString(user)}/repos?per_page=100";
+            var fetched = new List<(string Name, string Url, bool Private)>();
             for (int page = 1; ; page++)
             {
                 var json = await Http.GetStringAsync($"{baseUrl}&page={page}");
                 using var doc = JsonDocument.Parse(json);
                 var arr = doc.RootElement.EnumerateArray().ToList();
                 foreach (var r in arr.Where(x => token != "" || user == "" || string.Equals(x.GetProperty("owner").GetProperty("login").GetString(), user, StringComparison.OrdinalIgnoreCase)))
-                    _repos.Add(new RepoItem { Name = r.GetProperty("name").GetString()!, CloneUrl = r.GetProperty("clone_url").GetString()!, Private = r.GetProperty("private").GetBoolean() });
+                    fetched.Add((r.GetProperty("name").GetString()!, r.GetProperty("clone_url").GetString()!, r.GetProperty("private").GetBoolean()));
                 if (arr.Count < 100) break;
+            }
+
+            // Merge into the existing list so nothing already known (branch, commit, status, dates…) is lost.
+            // Only repos GitHub no longer returns are removed; nothing changes at all if GitHub returned nothing.
+            if (fetched.Count > 0)
+            {
+                var names = fetched.Select(f => f.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                foreach (var gone in _repos.Where(r => !names.Contains(r.Name)).ToList()) _repos.Remove(gone);
+                for (int i = 0; i < fetched.Count; i++)
+                {
+                    var f = fetched[i];
+                    var idx = _repos.ToList().FindIndex(r => string.Equals(r.Name, f.Name, StringComparison.OrdinalIgnoreCase));
+                    if (idx < 0) { _repos.Insert(Math.Min(i, _repos.Count), new RepoItem { Name = f.Name, CloneUrl = f.Url, Private = f.Private }); continue; }
+                    _repos[idx].CloneUrl = f.Url;
+                    _repos[idx].Private = f.Private;
+                    if (idx != i) _repos.Move(idx, i); // keep GitHub's order
+                }
             }
             string who = "no token";
             if (token != "")
@@ -251,7 +267,7 @@ public partial class MainWindow : Window
                 catch (Exception ex) { who = "TOKEN REJECTED: " + ex.Message; }
             }
             Title = $"Repo Sync v{Ver} - {_repos.Count} repos ({_repos.Count(r => r.Private)} private), {who}";
-            if (_repos.Count == 0)
+            if (fetched.Count == 0)
                 MessageBox.Show(token != ""
                     ? "GitHub returned no repos for this token. For a fine-grained token, set Repository access to 'All repositories' (or select repos) and the right Resource owner."
                     : $"No public repos found for '{user}'. Private repos need a token.");
@@ -259,8 +275,6 @@ public partial class MainWindow : Window
         catch (Exception ex) { MessageBox.Show(ex.Message, "Load failed"); }
         finally
         {
-            foreach (var r in _repos)
-                if (old.TryGetValue(r.Name, out var o)) { r.IsSelected = o.IsSelected; r.Status = o.Status; }
             LoadBtn.IsEnabled = true;
             SaveSettings();
         }
