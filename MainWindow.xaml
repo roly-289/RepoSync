@@ -34,8 +34,30 @@
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridCheckBoxColumn Header="Private" Binding="{Binding Private}" IsReadOnly="True"/>
-        <DataGridTextColumn Header="Remote" Binding="{Binding RemoteState}" IsReadOnly="True" Width="220"/>
-        <DataGridTextColumn Header="Last updated" Binding="{Binding LastUpdated, StringFormat=dd MMM yyyy HH:mm}" IsReadOnly="True" Width="120"/>
+        <DataGridTemplateColumn Header="Remote" SortMemberPath="RemoteState" Width="60">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding RemoteIcon}" ToolTip="{Binding RemoteState}" HorizontalAlignment="Center"
+                         FontFamily="Segoe UI Symbol" FontSize="15" FontWeight="Bold" Background="Transparent">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding RemoteIcon}" Value="✔"><Setter Property="Foreground" Value="#16A34A"/></DataTrigger>
+                      <DataTrigger Binding="{Binding RemoteIcon}" Value="✘"><Setter Property="Foreground" Value="#DC2626"/></DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Last updated" Binding="{Binding LastUpdatedText}" SortMemberPath="LastUpdated" IsReadOnly="True" Width="100">
+          <DataGridTextColumn.ElementStyle>
+            <Style TargetType="TextBlock">
+              <Setter Property="ToolTip" Value="{Binding LastUpdated, StringFormat=dddd dd MMM yyyy HH:mm}"/>
+            </Style>
+          </DataGridTextColumn.ElementStyle>
+        </DataGridTextColumn>
         <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="*">
           <DataGridTextColumn.CellStyle>
             <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">

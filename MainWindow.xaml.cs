@@ -26,8 +26,36 @@ public class RepoItem : INotifyPropertyChanged
     public string CloneUrl { get; set; } = "";
     public bool Private { get; set; }
     public bool IsSelected { get => _sel; set { _sel = value; Raise(nameof(IsSelected)); } }
-    public DateTime? LastUpdated { get => _updated; set { _updated = value; Raise(nameof(LastUpdated)); } }
-    public string RemoteState { get => _remote; set { _remote = value; Raise(nameof(RemoteState)); } }
+    public DateTime? LastUpdated { get => _updated; set { _updated = value; Raise(nameof(LastUpdated)); Raise(nameof(LastUpdatedText)); } }
+
+    /// <summary>Today: "12:24"; yesterday: "Yesterday"; within the last week: "Monday"; older: "20 Nov 2026".</summary>
+    [JsonIgnore]
+    public string LastUpdatedText
+    {
+        get
+        {
+            if (_updated is not { } t) return "";
+            return (DateTime.Today - t.Date).Days switch
+            {
+                <= 0 => t.ToString("HH:mm"),
+                1 => "Yesterday",
+                < 7 => t.ToString("dddd"),
+                _ => t.ToString("dd MMM yyyy"),
+            };
+        }
+    }
+
+    /// <summary>✔ up to date, ✘ needs attention, – not cloned, … checking. Full detail is in RemoteState.</summary>
+    [JsonIgnore]
+    public string RemoteIcon => _remote switch
+    {
+        "" => "",
+        "Checking…" => "…",
+        "Not cloned" => "–",
+        "Up to date" => "✔",
+        _ => "✘",
+    };
+    public string RemoteState { get => _remote; set { _remote = value; Raise(nameof(RemoteState)); Raise(nameof(RemoteIcon)); } }
     public string Branch { get => _branch; set { _branch = value; Raise(nameof(Branch)); if (!Hold) BranchShown = value; } }
     public string LastCommit { get => _commit; set { _commit = value; Raise(nameof(LastCommit)); if (!Hold) CommitShown = value; } }
 
