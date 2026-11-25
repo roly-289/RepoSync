@@ -60,6 +60,7 @@
                     <Style.Triggers>
                       <DataTrigger Binding="{Binding StatusIcon}" Value="✔"><Setter Property="Foreground" Value="#16A34A"/></DataTrigger>
                       <DataTrigger Binding="{Binding StatusIcon}" Value="✘"><Setter Property="Foreground" Value="#DC2626"/></DataTrigger>
+                      <DataTrigger Binding="{Binding StatusIcon}" Value="↻"><Setter Property="Foreground" Value="#D97706"/></DataTrigger>
                     </Style.Triggers>
                   </Style>
                 </TextBlock.Style>

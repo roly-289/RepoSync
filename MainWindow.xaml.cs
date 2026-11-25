@@ -45,7 +45,7 @@ public class RepoItem : INotifyPropertyChanged
         }
     }
 
-    /// <summary>One icon for the whole row: ✔ fine, ✘ sync failed or out of sync with remote, – not cloned, … busy.</summary>
+    /// <summary>One icon for the whole row: ✔ fine, ↻ out of sync with remote, ✘ failed, – not cloned, … busy.</summary>
     [JsonIgnore]
     public string StatusIcon
     {
@@ -54,7 +54,8 @@ public class RepoItem : INotifyPropertyChanged
             if (_status == "Working…" || _remote == "Checking…") return "…";
             if (_status != "" && !_status.StartsWith("OK")) return "✘"; // last sync failed
             if (_remote == "") return _status.StartsWith("OK") ? "✔" : "";
-            return _remote switch { "Not cloned" => "–", "Up to date" => "✔", _ => "✘" };
+            if (_remote.StartsWith("Fetch failed") || _remote.StartsWith("Error")) return "✘";
+            return _remote switch { "Not cloned" => "–", "Up to date" => "✔", _ => "↻" }; // ↻ = out of sync, needs an update
         }
     }
 
