@@ -45,17 +45,40 @@ public class RepoItem : INotifyPropertyChanged
         }
     }
 
-    /// <summary>✔ up to date, ✘ needs attention, – not cloned, … checking. Full detail is in RemoteState.</summary>
+    /// <summary>One icon for the whole row: ✔ fine, ✘ sync failed or out of sync with remote, – not cloned, … busy.</summary>
     [JsonIgnore]
-    public string RemoteIcon => _remote switch
+    public string StatusIcon
     {
-        "" => "",
-        "Checking…" => "…",
-        "Not cloned" => "–",
-        "Up to date" => "✔",
-        _ => "✘",
-    };
-    public string RemoteState { get => _remote; set { _remote = value; Raise(nameof(RemoteState)); Raise(nameof(RemoteIcon)); } }
+        get
+        {
+            if (_status == "Working…" || _remote == "Checking…") return "…";
+            if (_status != "" && !_status.StartsWith("OK")) return "✘"; // last sync failed
+            if (_remote == "") return _status.StartsWith("OK") ? "✔" : "";
+            return _remote switch { "Not cloned" => "–", "Up to date" => "✔", _ => "✘" };
+        }
+    }
+
+    /// <summary>What is wrong, or what just happened: sync error, else remote difference, else sync result.</summary>
+    [JsonIgnore]
+    public string Message
+    {
+        get
+        {
+            if (_status == "Working…") return "Working…";
+            if (_remote == "Checking…") return "Checking…";
+            if (_status != "" && !_status.StartsWith("OK")) return _status;
+            if (_remote != "" && _remote != "Up to date") return _remote; // e.g. "Behind 2 · newer branch: dev"
+            if (_status.StartsWith("OK"))
+            {
+                var m = _status.Length > 2 ? _status[2..].TrimStart(' ', '—', '-') : "";
+                return m == "" ? "Synced" : char.ToUpper(m[0]) + m[1..];
+            }
+            return _remote == "Up to date" ? "Up to date" : "";
+        }
+    }
+
+    [JsonIgnore] public string Detail => string.Join("\n", new[] { _status, _remote }.Where(x => x != ""));
+    public string RemoteState { get => _remote; set { _remote = value; Raise(nameof(RemoteState)); Raise(nameof(StatusIcon)); Raise(nameof(Message)); Raise(nameof(Detail)); } }
     public string Branch { get => _branch; set { _branch = value; Raise(nameof(Branch)); if (!Hold) BranchShown = value; } }
     public string LastCommit { get => _commit; set { _commit = value; Raise(nameof(LastCommit)); if (!Hold) CommitShown = value; } }
 
@@ -66,32 +89,9 @@ public class RepoItem : INotifyPropertyChanged
     [JsonIgnore] public string CommitShown { get => _commitShown; set { _commitShown = value; Raise(nameof(CommitShown)); } }
     /// <summary>"updated", "unchanged" or "" – drives the faint tint on the Status cell.</summary>
     [JsonIgnore] public string Outcome { get => _outcome; set { _outcome = value; Raise(nameof(Outcome)); } }
-    public string Status { get => _status; set { _status = value; Raise(nameof(Status)); Raise(nameof(StatusIcon)); Raise(nameof(Message)); } }
+    public string Status { get => _status; set { _status = value; Raise(nameof(Status)); Raise(nameof(StatusIcon)); Raise(nameof(Message)); Raise(nameof(Detail)); } }
 
-    /// <summary>✔ success, ✘ failure, … working. The text itself is in <see cref="Message"/>.</summary>
-    [JsonIgnore]
-    public string StatusIcon => _status switch
-    {
-        "" => "",
-        "Working…" => "…",
-        _ when _status.StartsWith("OK") => "✔",
-        _ => "✘",
-    };
 
-    /// <summary>The status text without the "OK" prefix, e.g. "Updated", "No changes", or the error text.</summary>
-    [JsonIgnore]
-    public string Message
-    {
-        get
-        {
-            if (_status.StartsWith("OK"))
-            {
-                var m = _status.Length > 2 ? _status[2..].TrimStart(' ', '—', '-') : "";
-                return m == "" ? "Synced" : char.ToUpper(m[0]) + m[1..];
-            }
-            return _status;
-        }
-    }
     public event PropertyChangedEventHandler? PropertyChanged;
     void Raise(string n) => PropertyChanged?.Invoke(this, new(n));
 }
