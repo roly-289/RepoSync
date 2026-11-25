@@ -3,6 +3,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:bk="clr-namespace:BranchKit;assembly=BranchKit"
         Title="Repo Sync" Icon="Assets/app.ico" Height="600" Width="900">
+  <Window.Resources>
+    <!-- Faint tint after an update: green = updated, grey-blue = no changes -->
+    <Style x:Key="OutcomeCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Outcome}" Value="updated"><Setter Property="Background" Value="#4090EE90"/></DataTrigger>
+        <DataTrigger Binding="{Binding Outcome}" Value="unchanged"><Setter Property="Background" Value="#40B0C4DE"/></DataTrigger>
+      </Style.Triggers>
+    </Style>
+  </Window.Resources>
   <Grid Margin="10">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
@@ -58,16 +67,24 @@
             </Style>
           </DataGridTextColumn.ElementStyle>
         </DataGridTextColumn>
-        <DataGridTextColumn Header="Status" Binding="{Binding Status}" IsReadOnly="True" Width="*">
-          <DataGridTextColumn.CellStyle>
-            <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
-              <Style.Triggers>
-                <DataTrigger Binding="{Binding Outcome}" Value="updated"><Setter Property="Background" Value="#4090EE90"/></DataTrigger>
-                <DataTrigger Binding="{Binding Outcome}" Value="unchanged"><Setter Property="Background" Value="#40B0C4DE"/></DataTrigger>
-              </Style.Triggers>
-            </Style>
-          </DataGridTextColumn.CellStyle>
-        </DataGridTextColumn>
+        <DataGridTemplateColumn Header="Status" SortMemberPath="StatusIcon" Width="60" CellStyle="{StaticResource OutcomeCell}">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding StatusIcon}" ToolTip="{Binding Status}" HorizontalAlignment="Center"
+                         FontFamily="Segoe UI Symbol" FontSize="15" FontWeight="Bold" Background="Transparent">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding StatusIcon}" Value="✔"><Setter Property="Foreground" Value="#16A34A"/></DataTrigger>
+                      <DataTrigger Binding="{Binding StatusIcon}" Value="✘"><Setter Property="Foreground" Value="#DC2626"/></DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTextColumn Header="Message" Binding="{Binding Message}" IsReadOnly="True" Width="*" CellStyle="{StaticResource OutcomeCell}"/>
       </DataGrid.Columns>
     </DataGrid>
     <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"/>

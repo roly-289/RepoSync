@@ -66,7 +66,32 @@ public class RepoItem : INotifyPropertyChanged
     [JsonIgnore] public string CommitShown { get => _commitShown; set { _commitShown = value; Raise(nameof(CommitShown)); } }
     /// <summary>"updated", "unchanged" or "" – drives the faint tint on the Status cell.</summary>
     [JsonIgnore] public string Outcome { get => _outcome; set { _outcome = value; Raise(nameof(Outcome)); } }
-    public string Status { get => _status; set { _status = value; Raise(nameof(Status)); } }
+    public string Status { get => _status; set { _status = value; Raise(nameof(Status)); Raise(nameof(StatusIcon)); Raise(nameof(Message)); } }
+
+    /// <summary>✔ success, ✘ failure, … working. The text itself is in <see cref="Message"/>.</summary>
+    [JsonIgnore]
+    public string StatusIcon => _status switch
+    {
+        "" => "",
+        "Working…" => "…",
+        _ when _status.StartsWith("OK") => "✔",
+        _ => "✘",
+    };
+
+    /// <summary>The status text without the "OK" prefix, e.g. "Updated", "No changes", or the error text.</summary>
+    [JsonIgnore]
+    public string Message
+    {
+        get
+        {
+            if (_status.StartsWith("OK"))
+            {
+                var m = _status.Length > 2 ? _status[2..].TrimStart(' ', '—', '-') : "";
+                return m == "" ? "Synced" : char.ToUpper(m[0]) + m[1..];
+            }
+            return _status;
+        }
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
     void Raise(string n) => PropertyChanged?.Invoke(this, new(n));
 }
@@ -440,7 +465,9 @@ public partial class MainWindow : Window
                 r.Outcome = changed ? "updated" : "unchanged";
                 // strong colour, settling to the faint tint the cell style keeps afterwards
                 var strong = changed ? Colors.LightGreen : Colors.LightSteelBlue;
-                Flash(r, "Status", strong, Color.FromArgb(0x40, strong.R, strong.G, strong.B));
+                var settle = Color.FromArgb(0x40, strong.R, strong.G, strong.B);
+                Flash(r, "Status", strong, settle);
+                Flash(r, "Message", strong, settle);
             }
         }
         Grid.IsEnabled = true;
