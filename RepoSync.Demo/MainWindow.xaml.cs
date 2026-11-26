@@ -159,8 +159,9 @@ public partial class MainWindow : Window
         _busy = true;
         GitService.User = ProfileName();
         Directory.CreateDirectory(root);
-        UpdateBtn.IsEnabled = false;
-        Grid.IsEnabled = false; // disables row buttons while running
+        // The table itself stays enabled: a disabled DataGrid is drawn in light colours under the Fluent theme.
+        // Row buttons are ignored while _busy is set instead.
+        UpdateBtn.IsEnabled = CheckBtn.IsEnabled = false;
         foreach (var r in sel)
         {
             var (oldBranch, oldCommit) = (r.Branch, r.LastCommit);
@@ -194,8 +195,7 @@ public partial class MainWindow : Window
                 Flash(r, "Message", strong, settle);
             }
         }
-        Grid.IsEnabled = true;
-        UpdateBtn.IsEnabled = true;
+        UpdateBtn.IsEnabled = CheckBtn.IsEnabled = true;
         _busy = false;
         SaveSettings();
         _ = ShowGraph(Grid.SelectedItem as RepoItem);

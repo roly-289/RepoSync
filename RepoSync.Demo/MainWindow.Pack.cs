@@ -98,7 +98,7 @@ public partial class MainWindow
     {
         if (_busy || r.Pack != PackPhase.Ready || _feedPath == "") return;
         _busy = true;
-        Grid.IsEnabled = UpdateBtn.IsEnabled = CheckBtn.IsEnabled = false;
+        UpdateBtn.IsEnabled = CheckBtn.IsEnabled = false; // the table stays enabled (see UpdateRepos)
         var candidates = r.PackCandidates.ToList();
         r.ScanGen++; // ignore any scan that is still running for this repo
         r.SetPack(PackPhase.Packing, candidates);
@@ -122,7 +122,7 @@ public partial class MainWindow
         catch (Exception ex) { r.Status = "Pack failed: " + ex.Message; }
         finally
         {
-            Grid.IsEnabled = UpdateBtn.IsEnabled = CheckBtn.IsEnabled = true;
+            UpdateBtn.IsEnabled = CheckBtn.IsEnabled = true;
             _busy = false;
             SaveSettings();
             _ = ScanRepo(r); // whatever is still ahead (e.g. after a failure) stays enabled
