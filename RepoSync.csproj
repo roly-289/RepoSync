@@ -5,7 +5,7 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.18.2</Version>
+    <Version>1.18.3</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
@@ -13,10 +13,11 @@
     <!-- NuGetCollector is its own project in this repo; keep its files out of RepoSync -->
     <Compile Remove="NuGetCollector\**" />
     <Compile Remove="NuGetCollector.Core\**" />
+    <Compile Remove="RepoSync.Core\**" />
     <Page Remove="NuGetCollector\**" />
     <ApplicationDefinition Remove="NuGetCollector\**" />
+    <ProjectReference Include="RepoSync.Core\RepoSync.Core.csproj" />
     <ProjectReference Include="NuGetCollector.Core\NuGetCollector.Core.csproj" />
     <PackageReference Include="BranchKit" Version="1.3.0" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
   </ItemGroup>
 </Project>

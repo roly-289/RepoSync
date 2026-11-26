@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="RepoSync.csproj" />
+  <Project Path="RepoSync.Core/RepoSync.Core.csproj" />
   <Project Path="NuGetCollector/NuGetCollector.csproj" />
   <Project Path="NuGetCollector.Core/NuGetCollector.Core.csproj" />
 </Solution>

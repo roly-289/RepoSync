@@ -77,9 +77,8 @@ ask which of several signed-in GitHub accounts to use.
 
 | Folder | |
 |---|---|
-| `RepoSync.csproj` | The app. `MainWindow*.cs` is split by feature: list and updates, graph, animation, pack, open. |
-| `Models/` | `RepoItem` (one table row) and `Settings`. |
-| `Services/` | `GitService` (runs git, sync, remote check), `GitHubClient` (repo listing), `CommitGraph` (builds the BranchKit tree). |
+| `RepoSync.csproj` | The WPF app: windows and XAML only. `MainWindow*.cs` is split by feature: list and updates, graph, animation, pack, open. |
+| `RepoSync.Core/` | No UI. `Models/`: `RepoItem` (one table row) and `Settings`. `Services/`: `GitService` (runs git, sync, remote check), `GitHubClient` (repo listing), `CommitGraph` (builds the BranchKit tree). |
 | `NuGetCollector.Core/` | Scans for packages and projects and packs them. Shared by RepoSync and NuGetCollector. |
 | `NuGetCollector/` | A standalone app. It moves newer `.nupkg` files from a solutions folder into a feed, and can pack projects that are ahead of the feed. |
 
