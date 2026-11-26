@@ -16,8 +16,28 @@ public sealed record CollectResult(
     int ScannedCount, int ProjectCount, int MsBuildReadCount,
     TimeSpan ScanElapsed, TimeSpan TotalElapsed);
 
+/// <summary>A library project whose version is ahead of the feed (or not in it yet).</summary>
+public sealed record PackCandidate(string Id, string Version, string ExistingVersion, string ProjectPath);
+
+public sealed record RepoPackScan(IReadOnlyList<PackCandidate> Candidates, IReadOnlyList<string> Warnings);
+
 public static partial class PackageCollector
 {
+    /// <summary>Highest version of each package in a feed folder.</summary>
+    public static Task<IReadOnlyDictionary<string, NuGetVersion>> LoadFeedAsync(string feedFolder) =>
+        Task.Run<IReadOnlyDictionary<string, NuGetVersion>>(() =>
+        {
+            var feed = new Dictionary<string, NuGetVersion>(StringComparer.OrdinalIgnoreCase);
+            if (!Directory.Exists(feedFolder)) return feed;
+            foreach (var package in ReadAll(
+                         Directory.EnumerateFiles(feedFolder, "*.nupkg").Where(f => !IsSymbolsPackage(f)), []))
+            {
+                if (!feed.TryGetValue(package.Id, out var current) || package.Version > current)
+                    feed[package.Id] = package.Version;
+            }
+            return feed;
+        });
+
     public static async Task<CollectResult> RunAsync(
         string sourceDirectory, string targetDirectory, bool packProjects,
         bool includeNewProjects, IProgress<string> progress)

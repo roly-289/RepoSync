@@ -9,7 +9,8 @@ namespace NuGetCollector;
 // Reads package properties straight from the XML: the project file plus the nearest
 // Directory.Build.props and Directory.Build.targets. It is deliberately not an MSBuild
 // engine. Whenever it can't be sure of an answer it returns NeedsMsBuild.
-public sealed partial class FastProjectReader
+// librariesOnly: leave out executables (OutputType Exe/WinExe) unless they are packed as a tool.
+public sealed partial class FastProjectReader(bool librariesOnly = false)
 {
     public enum Outcome { Read, NotPackable, NeedsMsBuild }
 
@@ -88,6 +89,10 @@ public sealed partial class FastProjectReader
             (isTestProject && !properties.ContainsKey("IsPackable")))
             return new(Outcome.NotPackable);
 
+        if (librariesOnly && IsExecutable(Get("OutputType")) &&
+            !string.Equals(Get("PackAsTool"), "true", StringComparison.OrdinalIgnoreCase))
+            return new(Outcome.NotPackable);
+
         // Same precedence as the .NET SDK.
         var id = Get("PackageId");
         if (id.Length == 0) id = Get("AssemblyName");
@@ -107,6 +112,11 @@ public sealed partial class FastProjectReader
             ? new(Outcome.Read, id, parsed)
             : new(Outcome.NeedsMsBuild);
     }
+
+    internal static bool IsExecutable(string outputType) =>
+        outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase) ||
+        outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase) ||
+        outputType.Equals("AppContainerExe", StringComparison.OrdinalIgnoreCase);
 
     private static string? Expand(string value, Dictionary<string, string?> properties)
     {

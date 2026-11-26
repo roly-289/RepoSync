@@ -13,16 +13,18 @@ public static partial class PackageCollector
 
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromMinutes(10);
 
-    private static async Task<(int Projects, int MsBuildReads)> PackProjectsAsync(
-        IReadOnlyList<string> projectFiles, string target, Dictionary<string, NuGetVersion> existing,
-        bool includeNewProjects, List<PackageResult> results, List<string> warnings,
-        IProgress<string> progress)
+    private sealed record PackPlan(ProjectInfo Project, NuGetVersion? Current);
+
+    // Reads every project and decides which ones should be packed. Changes nothing on disk.
+    private static async Task<(List<PackPlan> Plans, int Projects, int MsBuildReads)> PlanProjectsAsync(
+        IReadOnlyList<string> projectFiles, IReadOnlyDictionary<string, NuGetVersion> existing,
+        bool includeNewProjects, bool librariesOnly, List<string> warnings, IProgress<string> progress)
     {
         var files = projectFiles.Order(StringComparer.OrdinalIgnoreCase).ToList();
 
         // Pass 1: read the XML directly (fast, and several projects at once). Collect any we can't be sure about.
         progress.Report($"Reading {files.Count:N0} project(s)...");
-        var reader = new FastProjectReader();
+        var reader = new FastProjectReader(librariesOnly);
         var projects = new List<ProjectInfo>();
         var uncertain = new List<string>();
         var reads = files.AsParallel()
@@ -49,7 +51,7 @@ public static partial class PackageCollector
         }
 
         // Pass 2: ask MSBuild about the uncertain ones.
-        projects.AddRange(await ReadWithMsBuildAsync(uncertain, warnings, progress));
+        projects.AddRange(await ReadWithMsBuildAsync(uncertain, librariesOnly, warnings, progress));
 
         // Pass 3: MSBuild has the final say before anything is packed. Check every project
         // sharing an ID with a pack candidate, so duplicate detection is accurate too.
@@ -63,9 +65,10 @@ public static partial class PackageCollector
             .Where(p => !p.Confirmed)
             .ToList();
         var pathsToConfirm = toConfirm.Select(p => p.Path).ToList();
-        var confirmed = await ReadWithMsBuildAsync(pathsToConfirm, warnings, progress);
+        var confirmed = await ReadWithMsBuildAsync(pathsToConfirm, librariesOnly, warnings, progress);
         projects = projects.Except(toConfirm).Concat(confirmed).ToList();
 
+        var plans = new List<PackPlan>();
         foreach (var group in projects.GroupBy(p => p.Id, StringComparer.OrdinalIgnoreCase))
         {
             if (group.Count() > 1)
@@ -93,6 +96,23 @@ public static partial class PackageCollector
                 continue;
             }
 
+            plans.Add(new PackPlan(project, inTarget ? current : null));
+        }
+
+        return (plans, files.Count, uncertain.Count + pathsToConfirm.Count);
+    }
+
+    private static async Task<(int Projects, int MsBuildReads)> PackProjectsAsync(
+        IReadOnlyList<string> projectFiles, string target, IReadOnlyDictionary<string, NuGetVersion> existing,
+        bool includeNewProjects, List<PackageResult> results, List<string> warnings,
+        IProgress<string> progress)
+    {
+        var (plans, projectCount, msBuildReads) = await PlanProjectsAsync(
+            projectFiles, existing, includeNewProjects, librariesOnly: false, warnings, progress);
+
+        foreach (var (project, current) in plans)
+        {
+            var version = project.Version.ToNormalizedString();
             progress.Report($"Packing {project.Id} {version}...");
             string status;
             try
@@ -106,17 +126,67 @@ public static partial class PackageCollector
             }
 
             results.Add(new PackageResult(
-                project.Id, version,
-                inTarget ? current!.ToNormalizedString() : "(none)",
-                status, project.Path));
+                project.Id, version, current?.ToNormalizedString() ?? "(none)", status, project.Path));
         }
 
-        return (files.Count, uncertain.Count + pathsToConfirm.Count);
+        return (projectCount, msBuildReads);
+    }
+
+    /// <summary>
+    /// Finds the library projects in one folder (a repo) that are ahead of the feed. Read-only: nothing is
+    /// packed or moved. <paramref name="feed"/> comes from <see cref="LoadFeedAsync"/>.
+    /// </summary>
+    public static async Task<RepoPackScan> ScanRepoAsync(
+        string repoFolder, string feedFolder, IReadOnlyDictionary<string, NuGetVersion> feed,
+        bool includeNewProjects, bool librariesOnly = true)
+    {
+        var repo = Normalize(repoFolder);
+        var target = Normalize(feedFolder);
+        var warnings = new List<string>();
+        var quiet = new Progress<string>();
+
+        var scan = FileScanner.Scan(repo, target, warnings, quiet);
+        var (plans, _, _) = await PlanProjectsAsync(
+            scan.Projects, feed, includeNewProjects, librariesOnly, warnings, quiet);
+
+        var candidates = plans
+            .Select(p => new PackCandidate(p.Project.Id, p.Project.Version.ToNormalizedString(),
+                p.Current?.ToNormalizedString() ?? "(none)", p.Project.Path))
+            .ToList();
+        return new RepoPackScan(candidates, warnings.Distinct().ToList());
+    }
+
+    /// <summary>Packs the given projects in Release and moves each package into the feed folder.</summary>
+    public static async Task<IReadOnlyList<PackageResult>> PackAsync(
+        IEnumerable<PackCandidate> candidates, string feedFolder, IProgress<string>? progress = null)
+    {
+        var target = Normalize(feedFolder);
+        Directory.CreateDirectory(target);
+        var warnings = new List<string>();
+        var results = new List<PackageResult>();
+
+        foreach (var c in candidates)
+        {
+            progress?.Report($"Packing {c.Id} {c.Version}...");
+            string status;
+            try
+            {
+                var project = new ProjectInfo(c.Id, NuGetVersion.Parse(c.Version), c.ProjectPath, Confirmed: true);
+                await PackAndMoveAsync(project, target, warnings);
+                status = "Packed and moved";
+            }
+            catch (Exception ex) when (IsExpectedError(ex))
+            {
+                status = $"Failed: {ex.Message}";
+            }
+            results.Add(new PackageResult(c.Id, c.Version, c.ExistingVersion, status, c.ProjectPath));
+        }
+        return results;
     }
 
     // Each call starts a process, which is slow, so several run at once.
     private static async Task<List<ProjectInfo>> ReadWithMsBuildAsync(
-        IReadOnlyList<string> files, List<string> warnings, IProgress<string> progress)
+        IReadOnlyList<string> files, bool librariesOnly, List<string> warnings, IProgress<string> progress)
     {
         var projects = new ProjectInfo?[files.Count];
         var errors = new string?[files.Count];
@@ -130,7 +200,7 @@ public static partial class PackageCollector
         {
             try
             {
-                projects[i] = await ReadProjectAsync(files[i]);
+                projects[i] = await ReadProjectAsync(files[i], librariesOnly);
             }
             catch (Exception ex) when (IsExpectedError(ex))
             {
@@ -146,11 +216,12 @@ public static partial class PackageCollector
 
     // MSBuild evaluates the project, so Directory.Build.props, VersionPrefix,
     // variables and conditions are all applied. Parsing the XML would miss them.
-    private static async Task<ProjectInfo?> ReadProjectAsync(string file)
+    private static async Task<ProjectInfo?> ReadProjectAsync(string file, bool librariesOnly)
     {
         var output = await RunDotNetAsync(file,
             "msbuild", file, "-nologo", "-p:Configuration=Release",
-            "-getProperty:PackageId", "-getProperty:PackageVersion", "-getProperty:IsPackable");
+            "-getProperty:PackageId", "-getProperty:PackageVersion", "-getProperty:IsPackable",
+            "-getProperty:OutputType", "-getProperty:PackAsTool");
 
         var start = output.IndexOf('{');
         if (start < 0)
@@ -161,6 +232,9 @@ public static partial class PackageCollector
         string Value(string name) => properties.GetProperty(name).GetString()?.Trim() ?? "";
 
         if (Value("IsPackable").Equals("false", StringComparison.OrdinalIgnoreCase))
+            return null;
+        if (librariesOnly && FastProjectReader.IsExecutable(Value("OutputType")) &&
+            !Value("PackAsTool").Equals("true", StringComparison.OrdinalIgnoreCase))
             return null;
 
         var id = Value("PackageId");

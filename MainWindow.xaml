@@ -4,6 +4,7 @@
         xmlns:bk="clr-namespace:BranchKit;assembly=BranchKit"
         Title="Repo Sync" Icon="Assets/app.ico" Height="600" Width="900">
   <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="B2V"/>
     <!-- Faint tint after an update: green = updated, grey-blue = no changes -->
     <Style x:Key="OutcomeCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
       <Style.Triggers>
@@ -15,7 +16,7 @@
   <Grid Margin="10">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
     </Grid.RowDefinitions>
     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
       <TextBlock Text="GitHub profile:" VerticalAlignment="Center"/>
@@ -29,7 +30,14 @@
       <Button DockPanel.Dock="Right" Content="Browse…" Padding="12,2" Click="Browse_Click"/>
       <TextBox x:Name="FolderBox" Margin="6,0,6,0"/>
     </DockPanel>
-    <Grid Grid.Row="3">
+    <DockPanel Grid.Row="2" Margin="0,0,0,8">
+      <TextBlock Text="NuGet feed:" VerticalAlignment="Center"/>
+      <CheckBox x:Name="IncludeNewBox" DockPanel.Dock="Right" Content="Include libraries not yet in feed" VerticalAlignment="Center" Margin="12,0,0,0"
+                ToolTip="Also allow Pack for libraries that have never been packed into the feed" Click="IncludeNew_Click"/>
+      <Button DockPanel.Dock="Right" Content="Browse…" Padding="12,2" Click="BrowseFeed_Click"/>
+      <TextBox x:Name="FeedBox" Margin="6,0,6,0" LostFocus="Feed_LostFocus"/>
+    </DockPanel>
+    <Grid Grid.Row="4">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="5"/><ColumnDefinition Width="380"/></Grid.ColumnDefinitions>
     <DataGrid x:Name="Grid" SelectionChanged="Grid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
       <DataGrid.Columns>
@@ -40,6 +48,19 @@
         <DataGridTemplateColumn Header="">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate><Button Content="Update" Padding="8,0" Margin="2" Click="RowUpdate_Click"/></DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <Grid>
+                <Button Content="{Binding PackText}" IsEnabled="{Binding PackEnabled}" ToolTip="{Binding PackTip}"
+                        Padding="8,0" Margin="2" MinWidth="70" Click="RowPack_Click"/>
+                <!-- loading sign while scanning or packing: the button stays disabled -->
+                <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Bottom" Margin="6,0,6,4"
+                             IsHitTestVisible="False" Visibility="{Binding PackBusy, Converter={StaticResource B2V}}"/>
+              </Grid>
+            </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridCheckBoxColumn Header="Private" Binding="{Binding Private}" IsReadOnly="True"/>
@@ -79,7 +100,7 @@
       </ScrollViewer>
     </DockPanel>
     </Grid>
-    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
       <Button Content="Select all" Padding="12,2" Click="SelectAll_Click"/>
       <Button Content="Select none" Padding="12,2" Margin="6,0" Click="SelectNone_Click"/>
       <Button x:Name="CheckBtn" Content="Check for updates" Padding="12,2" Margin="0,0,6,0" Click="Check_Click"/>
