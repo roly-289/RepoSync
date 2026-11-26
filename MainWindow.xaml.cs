@@ -25,6 +25,21 @@ public class RepoItem : INotifyPropertyChanged
     PackPhase _pack;
     IReadOnlyList<PackCandidate> _candidates = [];
     string _packNote = "";
+    IReadOnlyList<string> _solutions = [];
+    [JsonIgnore] public IReadOnlyList<string> Solutions => _solutions;
+    [JsonIgnore] public bool OpenEnabled => _solutions.Count > 0;
+    [JsonIgnore] public string OpenTip => _solutions.Count switch
+    {
+        0 => "No solution file found (is the repo cloned?)",
+        1 => $"Open {Path.GetFileName(_solutions[0])}",
+        _ => $"{_solutions.Count} solution files: pick one",
+    };
+    public void SetSolutions(IReadOnlyList<string> solutions)
+    {
+        _solutions = solutions;
+        Raise(nameof(Solutions)); Raise(nameof(OpenEnabled)); Raise(nameof(OpenTip));
+    }
+
     public int ScanGen; // bumped to discard the results of an out-of-date scan
 
     [JsonIgnore] public IReadOnlyList<PackCandidate> PackCandidates => _candidates;
@@ -197,6 +212,7 @@ public partial class MainWindow : Window
                 foreach (RepoItem i in e.NewItems)
                 {
                     if (_feed != null) _ = ScanRepo(i); // a repo added after startup
+                    else _ = RefreshSolutions(i);
                     i.PropertyChanged += (_, a) => { if (a.PropertyName == nameof(RepoItem.IsSelected)) SaveSettings(); };
                 }
         };
@@ -501,7 +517,7 @@ public partial class MainWindow : Window
         if (path == "" || !Directory.Exists(path))
         {
             _feed = null;
-            foreach (var r in _repos) { r.ScanGen++; r.SetPack(PackPhase.Unknown, null, "Set the NuGet feed folder to enable Pack"); }
+            foreach (var r in _repos) { r.ScanGen++; r.SetPack(PackPhase.Unknown, null, "Set the NuGet feed folder to enable Pack"); _ = RefreshSolutions(r); }
             return;
         }
         foreach (var r in _repos) r.SetPack(PackPhase.Scanning);
@@ -511,12 +527,72 @@ public partial class MainWindow : Window
         ScanAll();
     }
 
+    // ---- Open: the repo's solution file ---------------------------------------------------------------------
+
+    async Task RefreshSolutions(RepoItem r)
+    {
+        var dir = Path.Combine(FolderBox.Text.Trim(), r.Name);
+        r.SetSolutions(await Task.Run(() => FindSolutions(dir)));
+    }
+
+    // Solution files in the repo root; if there are none, the nearest ones within two folders down.
+    static List<string> FindSolutions(string repo)
+    {
+        var result = new List<string>();
+        if (!Directory.Exists(Path.Combine(repo, ".git"))) return result;
+        var options = new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint };
+        var skip = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin", "obj", "packages", "node_modules" };
+
+        IEnumerable<string> Level(string folder) => Directory.EnumerateFiles(folder, "*.sln*", options)
+            .Where(f => f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
+            .Order(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            var current = new List<string> { repo };
+            for (int depth = 0; depth <= 2 && result.Count == 0; depth++)
+            {
+                result.AddRange(current.SelectMany(Level));
+                if (result.Count > 0) break;
+                current = current.SelectMany(f => Directory.EnumerateDirectories(f, "*", options))
+                    .Where(d => !skip.Contains(Path.GetFileName(d)) && !Path.GetFileName(d).StartsWith('.'))
+                    .ToList();
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        return result;
+    }
+
+    void RowOpen_Click(object s, RoutedEventArgs e)
+    {
+        if (s is not FrameworkElement el || el.DataContext is not RepoItem r || r.Solutions.Count == 0) return;
+        if (r.Solutions.Count == 1) { OpenSolution(r.Solutions[0], r); return; }
+
+        var menu = new ContextMenu { PlacementTarget = el };
+        foreach (var path in r.Solutions)
+        {
+            var item = new MenuItem { Header = Path.GetRelativePath(Path.Combine(FolderBox.Text.Trim(), r.Name), path) };
+            item.Click += (_, _) => OpenSolution(path, r);
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
+    static void OpenSolution(string path, RepoItem r)
+    {
+        try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); } // opens in the app registered for .sln/.slnx
+        catch (Exception ex) { r.Status = "Could not open solution: " + ex.Message; }
+    }
+
     string _scanRoot = "";
 
     // The Pack buttons depend on where the repos are, so a different local folder means rescanning.
     void RescanIfFolderChanged()
     {
-        if (FolderBox.Text.Trim() != _scanRoot && _feed != null) ScanAll();
+        if (FolderBox.Text.Trim() == _scanRoot) return;
+        _scanRoot = FolderBox.Text.Trim();
+        if (_feed != null) ScanAll();
+        else foreach (var r in _repos.ToList()) _ = RefreshSolutions(r);
     }
 
     void ScanAll()
@@ -527,6 +603,7 @@ public partial class MainWindow : Window
 
     async Task ScanRepo(RepoItem r)
     {
+        _ = RefreshSolutions(r);
         var gen = ++r.ScanGen;
         var feed = _feed;
         var feedPath = _feedPath;

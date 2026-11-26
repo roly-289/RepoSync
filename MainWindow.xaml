@@ -63,6 +63,14 @@
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
+        <DataGridTemplateColumn Header="">
+          <DataGridTemplateColumn.CellTemplate>
+            <DataTemplate>
+              <Button Content="Open" IsEnabled="{Binding OpenEnabled}" ToolTip="{Binding OpenTip}"
+                      Padding="8,0" Margin="2" Click="RowOpen_Click"/>
+            </DataTemplate>
+          </DataGridTemplateColumn.CellTemplate>
+        </DataGridTemplateColumn>
         <DataGridCheckBoxColumn Header="Private" Binding="{Binding Private}" IsReadOnly="True"/>
         <DataGridTextColumn Header="Last updated" Binding="{Binding LastUpdatedText}" SortMemberPath="LastUpdated" IsReadOnly="True" Width="100">
           <DataGridTextColumn.ElementStyle>
