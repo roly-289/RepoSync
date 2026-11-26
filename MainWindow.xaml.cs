@@ -21,6 +21,10 @@ public partial class MainWindow : Window
         FolderBox.Text = st.LocalFolder != "" ? st.LocalFolder
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "source", "repos");
         FeedBox.Text = st.NuGetFeed;
+        ThemeBox.ItemsSource = new[] { "System", "Light", "Dark" };
+        ThemeBox.SelectedItem = st.Theme is "System" or "Light" ? st.Theme : "Dark";
+        ApplyTheme();
+        ThemeBox.SelectionChanged += (_, _) => { ApplyTheme(); SaveSettings(); };
         IncludeNewBox.IsChecked = st.IncludeNewLibraries;
         Loaded += (_, _) => _ = ReloadFeed();
         FolderBox.LostFocus += (_, _) => RescanIfFolderChanged();
@@ -55,7 +59,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var st = new Settings { Profile = UserBox.Text.Trim(), LocalFolder = FolderBox.Text.Trim(), NuGetFeed = FeedBox.Text.Trim(), IncludeNewLibraries = IncludeNewBox.IsChecked == true, Token = TokenBox.Password, Repos = _repos.ToList() };
+            var st = new Settings { Profile = UserBox.Text.Trim(), LocalFolder = FolderBox.Text.Trim(), NuGetFeed = FeedBox.Text.Trim(), Theme = ThemeBox.SelectedItem as string ?? "Dark", IncludeNewLibraries = IncludeNewBox.IsChecked == true, Token = TokenBox.Password, Repos = _repos.ToList() };
             st.Save();
             ShowSaved(st.LastSaved);
         }

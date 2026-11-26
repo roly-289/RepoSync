@@ -57,6 +57,11 @@ shows how many, and its tooltip lists them. A moving bar shows while the repo is
 
 Clicking **Pack** runs `dotnet pack -c Release` for each project and moves the `.nupkg` into the feed.
 
+## Theme
+
+The **Theme** box at the top chooses System, Light or Dark. It uses WPF's built-in Fluent theme and is remembered.
+Dark is the default.
+
 ## Settings
 
 Saved to `%APPDATA%\RepoSync\settings.json`: profile, folders, the repo list with each row's state, and the time of

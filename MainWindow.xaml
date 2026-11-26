@@ -24,6 +24,8 @@
       <TextBlock Text="Token (optional):" VerticalAlignment="Center"/>
       <PasswordBox x:Name="TokenBox" Width="150" Margin="6,0,12,0"/>
       <Button x:Name="LoadBtn" Content="Load repos" Padding="12,2" Click="Load_Click"/>
+      <TextBlock Text="Theme:" VerticalAlignment="Center" Margin="24,0,6,0"/>
+      <ComboBox x:Name="ThemeBox" Width="90"/>
     </StackPanel>
     <DockPanel Grid.Row="1" Margin="0,0,0,8">
       <TextBlock Text="Local folder:" VerticalAlignment="Center"/>
@@ -109,7 +111,7 @@
     <DockPanel Grid.Column="2">
       <TextBlock x:Name="GraphInfo" DockPanel.Dock="Top" Margin="6,0,0,4" Foreground="Gray" Text="Select a repo to see its branches"/>
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-        <bk:BranchGraphView x:Name="Graph" RowHeight="24" Background="White" Foreground="Black"/>
+        <bk:BranchGraphView x:Name="Graph" RowHeight="24"/>
       </ScrollViewer>
     </DockPanel>
     </Grid>

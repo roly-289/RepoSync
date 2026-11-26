@@ -11,6 +11,7 @@ public class Settings
     public string Profile { get; set; } = "";
     public string LocalFolder { get; set; } = "";
     public string NuGetFeed { get; set; } = "";
+    public string Theme { get; set; } = "Dark"; // System | Light | Dark
     public bool IncludeNewLibraries { get; set; }
     public DateTime? LastSaved { get; set; }
     public List<RepoItem> Repos { get; set; } = new();
