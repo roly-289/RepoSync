@@ -28,16 +28,21 @@ public class RepoItem : INotifyPropertyChanged
     IReadOnlyList<string> _solutions = [];
     [JsonIgnore] public IReadOnlyList<string> Solutions => _solutions;
     [JsonIgnore] public bool OpenEnabled => _solutions.Count > 0;
+    [JsonIgnore] public bool HasManySolutions => _solutions.Count > 1; // shows the dropdown half of the split button
+    /// <summary>The solution the main half of the button opens: the one named after the repo, else the first.</summary>
+    public string? DefaultSolution() =>
+        _solutions.FirstOrDefault(p => Path.GetFileNameWithoutExtension(p).Equals(Name, StringComparison.OrdinalIgnoreCase))
+        ?? _solutions.FirstOrDefault();
     [JsonIgnore] public string OpenTip => _solutions.Count switch
     {
         0 => "No solution file found (is the repo cloned?)",
         1 => $"Open {Path.GetFileName(_solutions[0])}",
-        _ => $"{_solutions.Count} solution files: pick one",
+        _ => $"Open {Path.GetFileName(DefaultSolution())} (▾ for the other {_solutions.Count - 1})",
     };
     public void SetSolutions(IReadOnlyList<string> solutions)
     {
         _solutions = solutions;
-        Raise(nameof(Solutions)); Raise(nameof(OpenEnabled)); Raise(nameof(OpenTip));
+        Raise(nameof(Solutions)); Raise(nameof(OpenEnabled)); Raise(nameof(OpenTip)); Raise(nameof(HasManySolutions));
     }
 
     public int ScanGen; // bumped to discard the results of an out-of-date scan
@@ -563,15 +568,30 @@ public partial class MainWindow : Window
         return result;
     }
 
+    // Main half of the split button: open the default solution.
     void RowOpen_Click(object s, RoutedEventArgs e)
     {
-        if (s is not FrameworkElement el || el.DataContext is not RepoItem r || r.Solutions.Count == 0) return;
-        if (r.Solutions.Count == 1) { OpenSolution(r.Solutions[0], r); return; }
+        if (s is FrameworkElement { DataContext: RepoItem r } && r.DefaultSolution() is { } path) OpenSolution(path, r);
+    }
 
-        var menu = new ContextMenu { PlacementTarget = el };
+    // Dropdown half (only shown when a repo has several solutions): choose which one to open.
+    void RowOpenMenu_Click(object s, RoutedEventArgs e)
+    {
+        if (s is not FrameworkElement el || el.DataContext is not RepoItem r || r.Solutions.Count == 0) return;
+        var root = Path.Combine(FolderBox.Text.Trim(), r.Name);
+        var def = r.DefaultSolution();
+        var menu = new ContextMenu
+        {
+            PlacementTarget = el,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+        };
         foreach (var path in r.Solutions)
         {
-            var item = new MenuItem { Header = Path.GetRelativePath(Path.Combine(FolderBox.Text.Trim(), r.Name), path) };
+            var item = new MenuItem
+            {
+                Header = Path.GetRelativePath(root, path),
+                FontWeight = path == def ? FontWeights.Bold : FontWeights.Normal,
+            };
             item.Click += (_, _) => OpenSolution(path, r);
             menu.Items.Add(item);
         }

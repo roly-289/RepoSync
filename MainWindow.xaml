@@ -66,8 +66,13 @@
         <DataGridTemplateColumn Header="">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate>
-              <Button Content="Open" IsEnabled="{Binding OpenEnabled}" ToolTip="{Binding OpenTip}"
-                      Padding="8,0" Margin="2" Click="RowOpen_Click"/>
+              <!-- split button: Open runs the default solution; the arrow (several solutions only) lists them all -->
+              <StackPanel Orientation="Horizontal">
+                <Button Content="Open" IsEnabled="{Binding OpenEnabled}" ToolTip="{Binding OpenTip}"
+                        Padding="8,0" Margin="2,2,0,2" Click="RowOpen_Click"/>
+                <Button Content="▾" Padding="4,0" Margin="0,2,2,2" ToolTip="Choose a solution"
+                        Visibility="{Binding HasManySolutions, Converter={StaticResource B2V}}" Click="RowOpenMenu_Click"/>
+              </StackPanel>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
