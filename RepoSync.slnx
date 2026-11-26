@@ -1,4 +1,4 @@
 <Solution>
   <Project Path="RepoSync.csproj" />
-  <Project Path="BranchKit/BranchKit.csproj" />
+  <Project Path="NuGetCollector/NuGetCollector.csproj" />
 </Solution>
