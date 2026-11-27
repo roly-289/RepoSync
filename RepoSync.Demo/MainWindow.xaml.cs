@@ -24,9 +24,8 @@ public partial class MainWindow : Window
         ThemeBox.ItemsSource = new[] { "System", "Light", "Dark" };
         ThemeBox.SelectedItem = st.Theme is "System" or "Light" ? st.Theme : "Dark";
         ApplyTheme();
-        CompactBox.IsChecked = st.Compact;
-        ApplyCompact(st.Compact);
-        CompactBox.Click += (_, _) => { ApplyCompact(CompactBox.IsChecked == true); SaveSettings(); };
+        ApplyCompact(false);
+        SizeChanged += (_, _) => { var tall = ActualHeight > ActualWidth; if (tall != _compact) ApplyCompact(tall); };
         ThemeBox.SelectionChanged += (_, _) => { ApplyTheme(); SaveSettings(); };
         IncludeNewBox.IsChecked = st.IncludeNewLibraries;
         Loaded += (_, _) => _ = ReloadFeed();
@@ -62,7 +61,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var st = new Settings { Profile = UserBox.Text.Trim(), LocalFolder = FolderBox.Text.Trim(), NuGetFeed = FeedBox.Text.Trim(), Theme = ThemeBox.SelectedItem as string ?? "Dark", IncludeNewLibraries = IncludeNewBox.IsChecked == true, Compact = _compact, Token = TokenBox.Password, Repos = _repos.ToList() };
+            var st = new Settings { Profile = UserBox.Text.Trim(), LocalFolder = FolderBox.Text.Trim(), NuGetFeed = FeedBox.Text.Trim(), Theme = ThemeBox.SelectedItem as string ?? "Dark", IncludeNewLibraries = IncludeNewBox.IsChecked == true, Token = TokenBox.Password, Repos = _repos.ToList() };
             st.Save();
             ShowSaved(st.LastSaved);
         }

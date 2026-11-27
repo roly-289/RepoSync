@@ -22,7 +22,6 @@
     <sys:String x:Key="TxtFolder">Local folder:</sys:String>
     <sys:String x:Key="TxtFeed">NuGet feed:</sys:String>
     <sys:String x:Key="TxtIncludeNew">Include libraries not yet in feed</sys:String>
-    <sys:String x:Key="TxtCompact">Vertical mode</sys:String>
     <Thickness x:Key="TopPad">12,2,12,2</Thickness>
     <Thickness x:Key="BtnPad">8,0,8,0</Thickness>
     <Style x:Key="WrapText" TargetType="TextBlock">
@@ -122,7 +121,6 @@
       <Button x:Name="LoadBtn" Content="{DynamicResource TxtLoad}" ToolTip="Load repos" Padding="12,2" Click="Load_Click"/>
       <TextBlock Text="{DynamicResource TxtTheme}" VerticalAlignment="Center" Margin="24,0,6,0"/>
       <ComboBox x:Name="ThemeBox" Width="90"/>
-      <CheckBox x:Name="CompactBox" Content="{DynamicResource TxtCompact}" ToolTip="Vertical mode: narrow layout with wrapped text, symbols and a smaller font" VerticalAlignment="Center" Margin="24,0,0,0"/>
     </WrapPanel>
     <DockPanel Grid.Row="1" Margin="0,0,0,8">
       <TextBlock Text="{DynamicResource TxtFolder}" VerticalAlignment="Center"/>

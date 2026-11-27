@@ -13,7 +13,6 @@ public class Settings
     public string NuGetFeed { get; set; } = "";
     public string Theme { get; set; } = "Dark"; // System | Light | Dark
     public bool IncludeNewLibraries { get; set; }
-    public bool Compact { get; set; } // vertical mode
     public DateTime? LastSaved { get; set; }
     public List<RepoItem> Repos { get; set; } = new();
     public string ProtectedToken { get; set; } = ""; // DPAPI-encrypted (current Windows user)

@@ -4,12 +4,11 @@ using System.Windows.Controls.Primitives;
 
 namespace RepoSync;
 
-// ---- Vertical mode: a narrow layout. Text wraps, buttons and headers become symbols, the font shrinks, and the
+// ---- Vertical mode: switched on automatically whenever the window is taller than it is wide. A narrow layout: Text wraps, buttons and headers become symbols, the font shrinks, and the
 // ---- commit graph moves under the table. Everything is switched from here so the XAML stays single.
 public partial class MainWindow
 {
     bool _compact;
-    double _wideWidth;
     DataGridLength[]? _wideCols;
 
     // Column order in MainWindow.xaml: Select, Repo, Branch, Last commit, Update, Pack, Open, Private, Last updated, Status, Message.
@@ -34,7 +33,7 @@ public partial class MainWindow
         ("TxtLoad", "Load repos", "☁"), ("TxtBrowse", "Browse…", "…"),
         ("TxtProfile", "GitHub profile:", "👤"), ("TxtToken", "Token (optional):", "🔑"), ("TxtTheme", "Theme:", "◐"),
         ("TxtFolder", "Local folder:", "📁"), ("TxtFeed", "NuGet feed:", "📦"),
-        ("TxtIncludeNew", "Include libraries not yet in feed", "+new"), ("TxtCompact", "Vertical mode", "▯"),
+        ("TxtIncludeNew", "Include libraries not yet in feed", "+new"),
     ];
 
     void ApplyCompact(bool on)
@@ -84,8 +83,5 @@ public partial class MainWindow
         Split.HorizontalAlignment = HorizontalAlignment.Stretch;
         Split.VerticalAlignment = VerticalAlignment.Stretch;
 
-        // A narrow window: remember the wide width so it can be restored.
-        if (on) { if (Width > 480) { _wideWidth = Width; Width = 480; } }
-        else if (_wideWidth > 0) { Width = _wideWidth; _wideWidth = 0; }
     }
 }
