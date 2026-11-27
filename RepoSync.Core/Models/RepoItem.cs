@@ -38,12 +38,12 @@ public class RepoItem : INotifyPropertyChanged
     [JsonIgnore] public PackPhase Pack => _pack;
     [JsonIgnore] public bool PackEnabled => _pack == PackPhase.Ready;
     [JsonIgnore] public bool PackBusy => _pack is PackPhase.Scanning or PackPhase.Packing;
-    [JsonIgnore] public string PackText => _pack switch
-    {
-        PackPhase.Ready => $"Pack ({_candidates.Count})",
-        PackPhase.Packing => "Packing…",
-        _ => "Pack",
-    };
+    /// <summary>Vertical mode shows symbols instead of words.</summary>
+    public static bool Compact { get; set; }
+    public void RefreshText() => Raise(nameof(PackText));
+    [JsonIgnore] public string PackText => Compact
+        ? _pack switch { PackPhase.Ready => $"▣{_candidates.Count}", PackPhase.Packing => "…", _ => "▣" }
+        : _pack switch { PackPhase.Ready => $"Pack ({_candidates.Count})", PackPhase.Packing => "Packing…", _ => "Pack" };
     [JsonIgnore] public string PackTip => _pack switch
     {
         PackPhase.Scanning => "Scanning projects…",

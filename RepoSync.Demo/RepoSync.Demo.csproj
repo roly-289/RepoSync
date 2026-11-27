@@ -5,7 +5,7 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.19.4</Version>
+    <Version>1.20.0</Version>
     <!-- Application.ThemeMode (Fluent light/dark) is still marked experimental in .NET 10 -->
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
