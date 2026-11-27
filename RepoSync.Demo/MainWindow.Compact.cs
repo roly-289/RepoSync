@@ -70,6 +70,11 @@ public partial class MainWindow
         ApplyLayout();
     }
 
+    bool _graphBottom;
+    const double BottomTableShare = 2.0 / 3.0;
+
+    void UpdateTableCap() => Grid.MaxHeight = _graphBottom && Body.ActualHeight > 0 ? Body.ActualHeight * BottomTableShare : double.PositiveInfinity;
+
     void GraphOption_Click(object sender, RoutedEventArgs e) { ApplyLayout(); SaveSettings(); }
 
     // Where the commit graph goes: hidden, on the right (narrower in vertical mode), or under the table (vertical mode only, if chosen).
@@ -82,8 +87,12 @@ public partial class MainWindow
 
         Body.ColumnDefinitions[1].Width = new GridLength(right ? 5 : 0);
         Body.ColumnDefinitions[2].Width = new GridLength(right ? (_compact ? 170 : 380) : 0);
+        // Graph at the bottom: the table takes only the height its rows need (never more than 2/3), the graph gets the rest.
+        _graphBottom = bottom;
+        Body.RowDefinitions[0].Height = bottom ? GridLength.Auto : new GridLength(1, GridUnitType.Star);
         Body.RowDefinitions[1].Height = new GridLength(bottom ? 5 : 0);
-        Body.RowDefinitions[2].Height = new GridLength(bottom ? 200 : 0);
+        Body.RowDefinitions[2].Height = bottom ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        UpdateTableCap();
 
         System.Windows.Controls.Grid.SetColumn(GraphPanel, bottom ? 0 : 2);
         System.Windows.Controls.Grid.SetRow(GraphPanel, bottom ? 2 : 0);

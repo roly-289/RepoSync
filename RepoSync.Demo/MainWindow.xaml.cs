@@ -26,6 +26,7 @@ public partial class MainWindow : Window
         ApplyTheme();
         ShowGraphBox.IsChecked = st.ShowGraph;
         GraphBottomBox.IsChecked = st.GraphBottomWhenVertical;
+        Body.SizeChanged += (_, _) => UpdateTableCap();
         ApplyCompact(false);
         SizeChanged += (_, _) => { var tall = ActualHeight > ActualWidth; if (tall != _compact) ApplyCompact(tall); };
         ThemeBox.SelectionChanged += (_, _) => { ApplyTheme(); SaveSettings(); };
