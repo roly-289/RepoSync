@@ -20,6 +20,8 @@
     <sys:String x:Key="TxtToken">Token (optional):</sys:String>
     <sys:String x:Key="TxtTheme">Theme:</sys:String>
     <sys:String x:Key="TxtFolder">Local folder:</sys:String>
+    <sys:String x:Key="TxtShowGraph">Show graph</sys:String>
+    <sys:String x:Key="TxtGraphBottom">Graph at bottom when vertical</sys:String>
     <sys:String x:Key="TxtFeed">NuGet feed:</sys:String>
     <sys:String x:Key="TxtIncludeNew">Include libraries not yet in feed</sys:String>
     <Thickness x:Key="TopPad">12,2,12,2</Thickness>
@@ -121,6 +123,8 @@
       <Button x:Name="LoadBtn" Content="{DynamicResource TxtLoad}" ToolTip="Load repos" Padding="12,2" Click="Load_Click"/>
       <TextBlock Text="{DynamicResource TxtTheme}" VerticalAlignment="Center" Margin="24,0,6,0"/>
       <ComboBox x:Name="ThemeBox" Width="90"/>
+      <CheckBox x:Name="ShowGraphBox" Content="{DynamicResource TxtShowGraph}" ToolTip="Show the commit graph (on the right)" VerticalAlignment="Center" Margin="24,0,0,0" Click="GraphOption_Click"/>
+      <CheckBox x:Name="GraphBottomBox" Content="{DynamicResource TxtGraphBottom}" ToolTip="In vertical mode, put the commit graph under the table instead of on the right" VerticalAlignment="Center" Margin="12,0,0,0" Click="GraphOption_Click"/>
     </WrapPanel>
     <DockPanel Grid.Row="1" Margin="0,0,0,8">
       <TextBlock Text="{DynamicResource TxtFolder}" VerticalAlignment="Center"/>
