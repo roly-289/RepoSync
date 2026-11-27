@@ -7,6 +7,8 @@
     <BooleanToVisibilityConverter x:Key="B2V"/>
 
     <!-- Colours that depend on the theme. These are the dark defaults; ApplyTheme (MainWindow.Theme.cs) replaces them. -->
+    <SolidColorBrush x:Key="GridBackground" Color="#1E2124"/>
+    <SolidColorBrush x:Key="GridForeground" Color="#F0F0F0"/>
     <SolidColorBrush x:Key="RowSelectedBackground" Color="#264F78"/>
     <SolidColorBrush x:Key="RowSelectedForeground" Color="White"/>
     <SolidColorBrush x:Key="RowButtonBackground" Color="#3A3F44"/>
@@ -21,6 +23,8 @@
 
     <!-- The theme's own selected-row colours don't suit the dark theme, so the selection is set here. -->
     <Style x:Key="ThemedRow" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+      <Setter Property="Background" Value="{DynamicResource GridBackground}"/>
+      <Setter Property="Foreground" Value="{DynamicResource GridForeground}"/>
       <Style.Triggers>
         <Trigger Property="IsSelected" Value="True">
           <Setter Property="Background" Value="{DynamicResource RowSelectedBackground}"/>
@@ -29,6 +33,7 @@
       </Style.Triggers>
     </Style>
     <Style x:Key="ThemedCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+      <Setter Property="Foreground" Value="{DynamicResource GridForeground}"/>
       <Style.Triggers>
         <Trigger Property="IsSelected" Value="True">
           <Setter Property="Background" Value="Transparent"/>
@@ -106,7 +111,7 @@
     </DockPanel>
     <Grid Grid.Row="4">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="5"/><ColumnDefinition Width="380"/></Grid.ColumnDefinitions>
-    <DataGrid x:Name="Grid" RowStyle="{StaticResource ThemedRow}" CellStyle="{StaticResource ThemedCell}" SelectionChanged="Grid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+    <DataGrid x:Name="Grid" Background="{DynamicResource GridBackground}" Foreground="{DynamicResource GridForeground}" RowStyle="{StaticResource ThemedRow}" CellStyle="{StaticResource ThemedCell}" SelectionChanged="Grid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
       <DataGrid.Columns>
         <DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
         <DataGridTextColumn Header="Repo" Binding="{Binding Name}" IsReadOnly="True" Width="250"/>

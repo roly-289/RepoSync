@@ -37,6 +37,8 @@ public partial class MainWindow
 
         (string Key, string Dark, string Light)[] palette =
         [
+            ("GridBackground",                "#1E2124", "#FFFFFF"),
+            ("GridForeground",                "#F0F0F0", "#1A1A1A"),
             ("RowSelectedBackground",         "#264F78", "#CCE4F7"),
             ("RowSelectedForeground",         "#FFFFFF", "#000000"),
             ("RowButtonBackground",           "#3A3F44", "#F3F3F3"),
