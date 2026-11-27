@@ -5,8 +5,73 @@
         Title="Repo Sync" Icon="Assets/app.ico" Height="600" Width="900">
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="B2V"/>
+
+    <!-- Colours that depend on the theme. These are the dark defaults; ApplyTheme (MainWindow.Theme.cs) replaces them. -->
+    <SolidColorBrush x:Key="RowSelectedBackground" Color="#264F78"/>
+    <SolidColorBrush x:Key="RowSelectedForeground" Color="White"/>
+    <SolidColorBrush x:Key="RowButtonBackground" Color="#3A3F44"/>
+    <SolidColorBrush x:Key="RowButtonBorder" Color="#6B737B"/>
+    <SolidColorBrush x:Key="RowButtonForeground" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="RowButtonHoverBackground" Color="#566069"/>
+    <SolidColorBrush x:Key="RowButtonHoverBorder" Color="#9CC2FF"/>
+    <SolidColorBrush x:Key="RowButtonPressedBackground" Color="#2B2F33"/>
+    <SolidColorBrush x:Key="RowButtonDisabledBackground" Color="#2A2D30"/>
+    <SolidColorBrush x:Key="RowButtonDisabledBorder" Color="#3C4044"/>
+    <SolidColorBrush x:Key="RowButtonDisabledForeground" Color="#7C8288"/>
+
+    <!-- The theme's own selected-row colours don't suit the dark theme, so the selection is set here. -->
+    <Style x:Key="ThemedRow" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+      <Style.Triggers>
+        <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Background" Value="{DynamicResource RowSelectedBackground}"/>
+          <Setter Property="Foreground" Value="{DynamicResource RowSelectedForeground}"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="ThemedCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+      <Style.Triggers>
+        <Trigger Property="IsSelected" Value="True">
+          <Setter Property="Background" Value="Transparent"/>
+          <Setter Property="BorderBrush" Value="Transparent"/>
+          <Setter Property="Foreground" Value="{DynamicResource RowSelectedForeground}"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- Buttons inside the table: explicit colours so they stay readable on selected rows, with visible hover/pressed states. -->
+    <Style x:Key="RowButton" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource RowButtonForeground}"/>
+      <Setter Property="Background" Value="{DynamicResource RowButtonBackground}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource RowButtonBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowButtonHoverBackground}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RowButtonHoverBorder}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowButtonPressedBackground}"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Foreground" Value="{DynamicResource RowButtonDisabledForeground}"/>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowButtonDisabledBackground}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource RowButtonDisabledBorder}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <!-- Faint tint after an update: green = updated, grey-blue = no changes -->
-    <Style x:Key="OutcomeCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+    <Style x:Key="OutcomeCell" TargetType="DataGridCell" BasedOn="{StaticResource ThemedCell}">
       <Style.Triggers>
         <DataTrigger Binding="{Binding Outcome}" Value="updated"><Setter Property="Background" Value="#4090EE90"/></DataTrigger>
         <DataTrigger Binding="{Binding Outcome}" Value="unchanged"><Setter Property="Background" Value="#40B0C4DE"/></DataTrigger>
@@ -41,7 +106,7 @@
     </DockPanel>
     <Grid Grid.Row="4">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="5"/><ColumnDefinition Width="380"/></Grid.ColumnDefinitions>
-    <DataGrid x:Name="Grid" SelectionChanged="Grid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
+    <DataGrid x:Name="Grid" RowStyle="{StaticResource ThemedRow}" CellStyle="{StaticResource ThemedCell}" SelectionChanged="Grid_SelectionChanged" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column">
       <DataGrid.Columns>
         <DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"/>
         <DataGridTextColumn Header="Repo" Binding="{Binding Name}" IsReadOnly="True" Width="250"/>
@@ -49,14 +114,14 @@
         <DataGridTextColumn Header="Last commit" Binding="{Binding CommitShown}" IsReadOnly="True" Width="250"/>
         <DataGridTemplateColumn Header="" Width="80">
           <DataGridTemplateColumn.CellTemplate>
-            <DataTemplate><Button Content="Update" Padding="8,0" Margin="2" Click="RowUpdate_Click"/></DataTemplate>
+            <DataTemplate><Button Style="{StaticResource RowButton}" Content="Update" Padding="8,0" Margin="2" Click="RowUpdate_Click"/></DataTemplate>
           </DataGridTemplateColumn.CellTemplate>
         </DataGridTemplateColumn>
         <DataGridTemplateColumn Header="" Width="90">
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate>
               <Grid>
-                <Button Content="{Binding PackText}" IsEnabled="{Binding PackEnabled}" ToolTip="{Binding PackTip}"
+                <Button Style="{StaticResource RowButton}" Content="{Binding PackText}" IsEnabled="{Binding PackEnabled}" ToolTip="{Binding PackTip}"
                         Padding="8,0" Margin="2" MinWidth="70" Click="RowPack_Click"/>
                 <!-- loading sign while scanning or packing: the button stays disabled -->
                 <ProgressBar IsIndeterminate="True" Height="3" MaxWidth="80" VerticalAlignment="Bottom" Margin="6,0,6,4"
@@ -70,9 +135,9 @@
             <DataTemplate>
               <!-- split button: Open runs the default solution; the arrow (several solutions only) lists them all -->
               <StackPanel Orientation="Horizontal">
-                <Button Content="Open" IsEnabled="{Binding OpenEnabled}" ToolTip="{Binding OpenTip}"
+                <Button Style="{StaticResource RowButton}" Content="Open" IsEnabled="{Binding OpenEnabled}" ToolTip="{Binding OpenTip}"
                         Padding="8,0" Margin="2,2,0,2" Click="RowOpen_Click"/>
-                <Button Content="▾" Padding="4,0" Margin="0,2,2,2" ToolTip="Choose a solution"
+                <Button Style="{StaticResource RowButton}" Content="▾" Padding="4,0" Margin="0,2,2,2" ToolTip="Choose a solution"
                         Visibility="{Binding HasManySolutions, Converter={StaticResource B2V}}" Click="RowOpenMenu_Click"/>
               </StackPanel>
             </DataTemplate>
