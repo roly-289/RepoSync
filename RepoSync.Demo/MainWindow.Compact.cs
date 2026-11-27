@@ -4,8 +4,7 @@ using System.Windows.Controls.Primitives;
 
 namespace RepoSync;
 
-// ---- Vertical mode: switched on automatically whenever the window is taller than it is wide. A narrow layout: Text wraps, buttons and headers become symbols, the font shrinks, and the
-// ---- commit graph moves under the table. Everything is switched from here so the XAML stays single.
+// ---- Vertical mode: switched on automatically whenever the window is taller than it is wide. A narrow layout: Text wraps, buttons and headers become symbols. Everything is switched from here so the XAML stays single.
 public partial class MainWindow
 {
     bool _compact;
@@ -68,20 +67,7 @@ public partial class MainWindow
             }
         }
 
-        // Layout: the graph sits beside the table normally, under it in vertical mode.
-        Body.ColumnDefinitions[1].Width = new GridLength(on ? 0 : 5);
-        Body.ColumnDefinitions[2].Width = new GridLength(on ? 0 : 380);
-        Body.RowDefinitions[1].Height = new GridLength(on ? 5 : 0);
-        Body.RowDefinitions[2].Height = new GridLength(on ? 200 : 0);
-        System.Windows.Controls.Grid.SetColumn(GraphPanel, on ? 0 : 2);
-        System.Windows.Controls.Grid.SetRow(GraphPanel, on ? 2 : 0);
-        System.Windows.Controls.Grid.SetColumn(Split, on ? 0 : 1);
-        System.Windows.Controls.Grid.SetRow(Split, on ? 1 : 0);
-        Split.ResizeDirection = on ? GridResizeDirection.Rows : GridResizeDirection.Columns;
-        Split.Width = on ? double.NaN : 5;
-        Split.Height = on ? 5 : double.NaN;
-        Split.HorizontalAlignment = HorizontalAlignment.Stretch;
-        Split.VerticalAlignment = VerticalAlignment.Stretch;
-
+        // The commit graph stays on the right, just narrower.
+        Body.ColumnDefinitions[2].Width = new GridLength(on ? 170 : 380);
     }
 }
